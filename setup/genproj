@@ -1,0 +1,27 @@
+#!/bin/bash
+# genproj
+
+dir=$(dirname $(dirname $(realpath $0)))
+
+project() {
+    proj=$1; type=$2; main=$3; targ=$4; name=${proj%%-*}
+    sed -e "s:@PROJNAME@:$name:" \
+        -e "s:@TARGET@:$targ:" \
+        -e "s:@PROJDIR@:$dir/$proj:" \
+        -e "s:@MICROBIAN@:$dir/microbian:" \
+        -e "s:@MAINFILE@:$dir/$proj/$main:" \
+        -e "/^FILE_NAME/s:/:%2F:g" \
+        $dir/setup/$type.geany >$dir/$proj/$name.geany
+}
+
+
+project x1000-echo part2 echo.c echo.hex
+project x1100-instrs part1 func.s func.hex
+project x2040-pureasm pureasm blinky.s blinky.hex
+project x2100-serial part2 primes.c primes.hex
+project x2200-interrupt part2 primes2.c primes2.hex
+project x2300-intrmech part2 bitbang.c bitbang.hex
+project x2400-neopixels part2 rainbow.c rainbow.hex
+project x3000-processes part3 valentine.c valentine.hex
+project x3200-driver part3 myprimes.c myprimes.hex
+project x3300-level part3 level.c level.hex
