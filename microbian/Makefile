@@ -3,7 +3,7 @@
 
 all: microbian.a startup.o
 
-CPU = -mcpu=cortex-m0 -mthumb
+CPU = -mcpu=cortex-m4 -mthumb
 CFLAGS = -O -g -Wall -ffreestanding
 CC = arm-none-eabi-gcc
 AS = arm-none-eabi-as
@@ -11,7 +11,7 @@ AR = arm-none-eabi-ar
 
 DRIVERS = timer.o serial.o i2c.o radio.o display.o
 
-MICROBIAN = microbian.o mpx-m0.o $(DRIVERS) lib.o
+MICROBIAN = microbian.o mpx-m4.s $(DRIVERS) lib.o
 
 microbian.a: $(MICROBIAN)
 	$(AR) cr $@ $^

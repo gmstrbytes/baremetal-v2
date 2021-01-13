@@ -1,7 +1,7 @@
-@@@ mpx-m0.s
+@@@ mpx-m4.s
 @@@ Copyright (c) 2018 J. M. Spivey        
 
-@@@ Hardware multiplexing for the ARM Cortex-M0
+@@@ Hardware multiplexing for the ARM Cortex-M4 (no floats)
 
         .syntax unified
         .text
@@ -39,33 +39,19 @@ set_stack:
 @@@ --------------------------------------
 
 @@@ The magic value for exception return is carefully preserved for each
-@@@ process.  On Cortex-M0, it will always be 0xfffffffd, but on other
-@@@ chips it encodes info about the hardware-saved frame layout.
+@@@ process.  On Cortex-M4F, it will encode info about the hardware-saved
+@@@ frame layout.
 
 @@@ isave -- save context for system call
         .macro isave
         mrs r0, psp             @ Get thread stack pointer
-        subs r0, #36
-        movs r1, r0
         mov r3, lr              @ Preserve magic value 0xfffffffd
-        stm r1!, {r3-r7}        @ Save low regs on thread stack
-        mov r4, r8              @ Copy from high to low
-        mov r5, r9
-        mov r6, r10
-        mov r7, r11
-        stm r1!, {r4-r7}        @ Save high regs in thread stack
+        stmfd r0!, {r3-r11}     @ Save registers
         .endm                   @ Return new thread sp
 
 @@@ irestore -- restore context after system call
         .macro irestore         @ Expect process sp in r0
-        movs r1, r0
-        adds r0, #20
-        ldm r0!, {r4-r7}        @ Restore high registers
-        mov r8, r4              @ Copy from low to high
-        mov r9, r5
-        mov r10, r6
-        mov r11, r7
-        ldm r1!, {r3-r7}        @ Restore low registers
+        ldmfd r0!, {r3-r11}     @ Restore registers
         msr psp, r0             @ Set stack pointer for thread
         bx r3
         .endm

@@ -4,7 +4,7 @@
 all: primes2.hex
 
 CC = arm-none-eabi-gcc
-CPU = -mcpu=cortex-m0 -mthumb
+CPU = -mcpu=cortex-m4 -mthumb
 CFLAGS = -O -g -Wall -ffreestanding
 AS = arm-none-eabi-as
 LD = arm-none-eabi-ld

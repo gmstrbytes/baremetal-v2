@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Debug target set by configuration or environment variable
-: ${DBGTGT:=nrf52}
+: ${DBGTGT:=}
 
 case $1 in
     *.elf)

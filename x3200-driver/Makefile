@@ -4,7 +4,7 @@
 all: myprimes.hex
 
 CC = arm-none-eabi-gcc
-CPU = -mcpu=cortex-m0 -mthumb
+CPU = -mcpu=cortex-m4 -mthumb
 CFLAGS = -O -g -Wall -ffreestanding
 INCLUDE = -I ../microbian
 AS = arm-none-eabi-as
