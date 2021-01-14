@@ -83,24 +83,32 @@ static struct proc *idle_proc;
 static void kprintf_setup(void);
 static void kprintf_internal(char *fmt, ...);
 
+static void pad(char *buf, int width) {
+    int w = strlen(buf);
+    if (w < width) {
+        memset(buf+w, ' ', width-w);
+        buf[width] = '\0';
+    }
+}
+
 /* microbian_dump -- display process states */
 static void microbian_dump(void) {
-    char buf1[16], buf2[16];
+    char buf[16];
 
     static const char *status[] = {
         "[DEAD]   ",
         "[ACTIVE] ",
-        "[SENDING]",
-        "[RCVING] ",
+        "[SEND]   ",
+        "[RECEIVE]",
         "[SENDREC]",
-        "[IDLING] "
+        "[IDLE]   "
     };
 
     kprintf_setup();
     kprintf_internal("\r\nPROCESS DUMP\r\n");
 
     // Our version of printf is a bit feeble, so the following is
-    // rather painful.
+    // more painful than it should be.
 
     for (int pid = 0; pid < os_nprocs; pid++) {
         struct proc *p = os_ptable[pid];
@@ -108,22 +116,12 @@ static void microbian_dump(void) {
         while (*z == BLANK) z++;
         unsigned free = (char *) z - (char *) p->p_stack;
 
-        if (pid < 10)
-            sprintf(buf1, " %d", pid);
-        else
-            sprintf(buf1, "%d", pid);
-
-        sprintf(buf2, "%u/%u", p->p_stksize-free, p->p_stksize);
-        int w = strlen(buf2);
-        if (w < 9) {
-            memset(buf2+w, ' ', 9-w);
-            buf2[9] = '\0';
-        }
-
-        kprintf_internal("%s: %s %x stk=%s %s\r\n",
-                         buf1, status[p->p_state],
-                         (unsigned) p->p_stack,
-                         buf2, p->p_name);
+        sprintf(buf, "%u/%u", p->p_stksize-free, p->p_stksize);
+        pad(buf, 9);
+        kprintf_internal("%s%d: %s %x stk=%s %s\r\n",
+                         (pid < 10 ? " " : ""), pid,
+                         status[p->p_state], (unsigned) p->p_stack,
+                         buf, p->p_name);
     }
 }
 
@@ -387,6 +385,7 @@ void default_handler(void) {
 
 /* hardfault_handler -- substitutes for the definition in startup.c */
 void hardfault_handler(void) {
+    // On nRF52, other exceptions come here too
     panic("HardFault");
 }
 

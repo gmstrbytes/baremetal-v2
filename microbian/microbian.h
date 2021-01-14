@@ -115,13 +115,14 @@ unsigned timer_micros(void);
 void timer_init(void);
 
 /* i2c.c */
-int i2c_try_read(int j, int addr, int cmd, byte *buf);
-int i2c_read_reg(int j, int addr, int cmd);
-void i2c_write_reg(int j, int addr, int cmd, int val);
-void i2c_read_bytes(int j, int addr, int cmd, byte *buf, int n);
-void i2c_write_bytes(int j, int addr, int cmd, byte *buf, int n);
-int i2c_xfer(int j, int kind, int addr, byte *buf1, int n1, byte *buf2, int n2);
-void i2c_init(int j);
+int i2c_probe(int chan, int addr);
+int i2c_read_reg(int chan, int addr, int cmd);
+void i2c_write_reg(int chan, int addr, int cmd, int val);
+void i2c_read_bytes(int chan, int addr, int cmd, byte *buf, int n);
+void i2c_write_bytes(int chan, int addr, int cmd, byte *buf, int n);
+int i2c_xfer(int chan, int kind, int addr,
+             byte *buf1, int n1, byte *buf2, int n2);
+void i2c_init(int chan);
 
 /* radio.c */
 #define RADIO_PACKET 32

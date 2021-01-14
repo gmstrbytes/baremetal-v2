@@ -66,13 +66,13 @@ argument to be a macro that expands the a 'position, width' pair. */
 #define   BUTTON_B PAD11
 #define ROW4 DEVPIN(0, 24)
 #define PAD19 DEVPIN(0, 26)
-#define    I2C1_SCL PAD19
+#define   I2C1_SCL PAD19
 #define PAD4  DEVPIN(0, 28)
 #define   COL1 PAD4
 #define PAD10 DEVPIN(0, 30)
 #define   COL5 PAD10
 #define PAD3  DEVPIN(0, 31)
-#define   COL3 PAD2
+#define   COL3 PAD3
 
 #define PAD20 DEVPIN(1, 0)
 #define   I2C1_SDA PAD20
@@ -86,12 +86,11 @@ argument to be a macro that expands the a 'position, width' pair. */
 
 /* TODO: Logo touch, mic power, mic input, speaker */
 
-
 /* Interrupts */
 #define SVC_IRQ    -5
 #define PENDSV_IRQ -2
 #define RADIO_IRQ   1
-#define UART_IRQ    2
+#define UART0_IRQ   2
 #define I2C0_IRQ    3
 #define I2C1_IRQ    4
 #define GPIOTE_IRQ  6
@@ -99,12 +98,23 @@ argument to be a macro that expands the a 'position, width' pair. */
 #define TIMER0_IRQ  8
 #define TIMER1_IRQ  9
 #define TIMER2_IRQ 10
+#define RTC0_IRQ   11
 #define TEMP_IRQ   12
 #define RNG_IRQ    13
+#define RTC1_IRQ   17
+#define TIMER3_IRQ 26
+#define TIMER4_IRQ 27
 #define PWM0_IRQ   28
 #define PWM1_IRQ   33
 #define PWM2_IRQ   34
+#define SPI0_IRQ   35
+#define UART1_IRQ  40
 #define PWM3_IRQ   45
+#define SPI1_IRQ   47
+
+// For compatibility, allow UART as a synonym for UART0
+#define UART_IRQ UART0_IRQ
+#define uart_handler uart0_handler
 
 /* System registers */
 #define SCB_CPUID              ADDR(0xe000ed00)

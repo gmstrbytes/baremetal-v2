@@ -20,7 +20,6 @@ static struct {
 #endif
 };
 
-
 /* i2c_wait -- wait for an expected interrupt event and detect error */
 static int i2c_wait(int chan, unsigned volatile *event) {
     int irq = i2c_pins[chan].irq;
@@ -41,8 +40,8 @@ static int i2c_wait(int chan, unsigned volatile *event) {
     return OK;
 }
 
-/* i2c_read -- read one or more bytes */
-static int i2c_read(int chan, char *buf, int n) {
+/* i2c_do_read -- read one or more bytes */
+static int i2c_do_read(int chan, char *buf, int n) {
     int status = OK;
 
     for (int i = 0; i < n; i++) {
@@ -71,8 +70,8 @@ static void i2c_start_write(int chan) {
     I2C[chan].I_STARTTX = 1;
 }
 
-/* i2c_write -- send one or more bytes */
-static int i2c_write(int chan, char *buf, int n) {
+/* i2c_do_write -- send one or more bytes */
+static int i2c_do_write(int chan, char *buf, int n) {
     int status = OK;
 
     /* The I2C hardware makes zero-length writes impossible, because
@@ -128,10 +127,10 @@ static void i2c_task(int chan) {
             // Write followed by read, with repeated start
             if (n1 > 0) {
                 i2c_start_write(chan);
-                status = i2c_write(chan, buf1, n1);
+                status = i2c_do_write(chan, buf1, n1);
             }
             if (status == OK)
-                status = i2c_read(chan, buf2, n2);
+                status = i2c_do_read(chan, buf2, n2);
             
             if (status != OK) {
                 i2c_stop(chan);
@@ -151,9 +150,9 @@ static void i2c_task(int chan) {
             // A single write transaction
             i2c_start_write(chan);
             if (n1 > 0)
-                status = i2c_write(chan, buf1, n1);
-            if (status == OK)
-                status = i2c_write(chan, buf2, n2);
+                status = i2c_do_write(chan, buf1, n1);
+            if (status == OK && n2 > 0)
+                status = i2c_do_write(chan, buf2, n2);
             i2c_stop(chan);
 
             if (status != OK) {
@@ -193,10 +192,10 @@ int i2c_xfer(int chan, int kind, int addr,
     return m.m_i1;
 }
 
-/* i2c_try_read -- try to read from I2C device */
-int i2c_try_read(int chan, int addr, int cmd, byte *buf2) {
-    byte buf1 = cmd;
-    return i2c_xfer(chan, READ, addr, &buf1, 1, buf2, 1);
+/* i2c_probe -- try to access an I2C device */
+int i2c_probe(int chan, int addr) {
+    byte buf = 0;
+    return i2c_xfer(chan, WRITE, addr, &buf, 1, NULL, 0);
 }
      
 /* i2c_read_bytes -- send command and read multi-byte result */

@@ -38,7 +38,14 @@ void heart_task(int n) {
     GPIO0_DIRSET = LED_MASK0;
     GPIO1_DIRSET = LED_MASK1;
 
-    // priority(P_HIGH);
+    // Set row pins to high-drive mode to increase brightness
+    gpio_drive(ROW1, GPIO_DRIVE_S0H1);
+    gpio_drive(ROW2, GPIO_DRIVE_S0H1);
+    gpio_drive(ROW3, GPIO_DRIVE_S0H1);
+    gpio_drive(ROW4, GPIO_DRIVE_S0H1);
+    gpio_drive(ROW5, GPIO_DRIVE_S0H1);
+
+    priority(P_HIGH);
 
     while (1) {
         show(heart, 70);

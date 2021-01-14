@@ -22,7 +22,7 @@
    are available to other processes. */
 
 /* NBUF -- size of input and output buffers.  Should be a power of 2. */
-#define NBUF 128
+#define NBUF 256
 
 /* wrap -- reduce index to range [0..NBUF) */
 #define wrap(x) ((x) & (NBUF-1))

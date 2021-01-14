@@ -29,7 +29,7 @@ void neoframe(unsigned pin, unsigned *buf, int n) {
 }
 
 /* rgb -- assemble a colour from RGB components */
-unsigned RGB(unsigned r, unsigned g, unsigned b) {
+unsigned rgb(unsigned r, unsigned g, unsigned b) {
     // Note the awkward GRB colour order of Neopixels
     return ((g & 0xff) << 16) | ((r & 0xff) << 8) | (b & 0xff);
 }
@@ -46,7 +46,7 @@ unsigned interp(int i, unsigned x, unsigned y) {
     int r = (ISTEP-i) * getR(x) + i * getR(y);
     int g = (ISTEP-i) * getG(x) + i * getG(y);
     int b = (ISTEP-i) * getB(x) + i * getB(y);
-    return RGB(r>>5, g>>5, b>>5);
+    return rgb(r>>5, g>>5, b>>5);
 }
 
 #define INTEN 31
@@ -58,13 +58,13 @@ unsigned hue(int i) {
     switch ((i >> 5) % 3) {
     case 0:
         // Colours 0 to 31, 96 to 127, ... from red to green
-        return interp(j, RGB(INTEN, 0, 0), RGB(0, INTEN, 0));
+        return interp(j, rgb(INTEN, 0, 0), rgb(0, INTEN, 0));
     case 1:
         // Colours 32 to 63, 128 to 159, ... from green to blue
-        return interp(j, RGB(0, INTEN, 0), RGB(0, 0, INTEN));
+        return interp(j, rgb(0, INTEN, 0), rgb(0, 0, INTEN));
     case 2:
         // Colours 64 to 95, 160 to 191, ... from blue to red
-        return interp(j, RGB(0, 0, INTEN), RGB(INTEN, 0, 0));
+        return interp(j, rgb(0, 0, INTEN), rgb(INTEN, 0, 0));
     default:
         return 0;
     }

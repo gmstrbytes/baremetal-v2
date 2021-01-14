@@ -42,10 +42,10 @@ void accel_start(void) {
     byte buf;
 
     /* Find chip and set to 50Hz, 8 bit, Active */
-    if (i2c_try_read(I2C_INTERNAL, ACC1, 0x0d, &buf) == OK) {
+    if (i2c_probe(I2C_INTERNAL, ACC1) == OK) {
         i2c_write_reg(I2C_INTERNAL, ACC1, ACC1_CTRL_REG1, 0x23);
         accel = 1;
-    } else if (i2c_try_read(I2C_INTERNAL, ACC2, 0x0f, &buf) == OK) {
+    } else if (i2c_probe(I2C_INTERNAL, ACC2) == OK) {
         i2c_write_reg(I2C_INTERNAL, ACC2, ACC2_CTRL_REG1, 0x4f);
         accel = 2;
     } else {

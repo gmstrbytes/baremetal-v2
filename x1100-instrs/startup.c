@@ -83,12 +83,12 @@ void __reset(void) {
 
 /* NVIC SETUP FUNCTIONS */
 
-/* On Cortex-M0, only the top two bits of each interrupt priority are
+/* On Cortex-M4, only the top three bits of each interrupt priority are
    implemented, but for portability priorities should be specified
    with integers in the range [0..255]. */
 
 /* irq_priority -- set priority for an IRQ to a value [0..255] */
-void irq_priority(int irq, unsigned prio) {
+inline void irq_priority(int irq, unsigned prio) {
     if (irq < 0)
         SET_BYTE(SCB_SHPR[(irq+8) >> 2], irq & 0x3, prio);
     else
@@ -167,9 +167,9 @@ void pendsv_handler(void);
 void systick_handler(void);
 void power_clock_handler(void);
 void radio_handler(void);
-void uart_handler(void);
-void spi0_twi0_handler(void);
-void spi1_twi1_handler(void);
+void uart0_handler(void);
+void i2c0_handler(void);
+void i2c1_handler(void);
 void nfc_handler(void);
 void gpiote_handler(void);
 void adc_handler(void);
@@ -198,14 +198,14 @@ void pdm_handler(void);
 void mwu_handler(void);
 void pwm1_handler(void);
 void pwm2_handler(void);
-void spi2_twi2_handler(void);
+void spi0_handler(void);
 void rtc2_handler(void);
 void i2s_handler(void);
 void fpu_handler(void);
 void usbd_handler(void);
 void uart1_handler(void);
 void pwm3_handler(void);
-void spi3_twi3_handler(void);
+void spi1_handler(void);
 
 // This vector table is placed at address 0 in the flash by directives
 // in the linker script.
@@ -215,9 +215,9 @@ void *__vectors[] __attribute((section(".vectors"))) = {
     __reset,
     nmi_handler,
     hardfault_handler,
-    memmgt_handler,             // -12
-    busfault_handler,
-    usagefault_handler,
+    hardfault_handler,          // -12
+    hardfault_handler,
+    hardfault_handler,
     0,
     0,                          //  -8
     0,
@@ -231,9 +231,9 @@ void *__vectors[] __attribute((section(".vectors"))) = {
     /* external interrupts */
     power_clock_handler,        //  0
     radio_handler,
-    uart_handler,
-    spi0_twi0_handler,
-    spi1_twi1_handler,          //  4
+    uart0_handler,
+    i2c0_handler,
+    i2c1_handler,               //  4
     nfc_handler,
     gpiote_handler,
     adc_handler,
@@ -264,7 +264,7 @@ void *__vectors[] __attribute((section(".vectors"))) = {
     mwu_handler,                // 32
     pwm1_handler,
     pwm2_handler,
-    spi2_twi2_handler,
+    spi0_handler,
     rtc2_handler,               // 36
     i2s_handler,
     fpu_handler,
@@ -276,7 +276,7 @@ void *__vectors[] __attribute((section(".vectors"))) = {
     0,                          // 44
     pwm3_handler,
     0,
-    spi3_twi3_handler,
+    spi1_handler,
     0,                          // 48
     0,
     0,

@@ -29,8 +29,7 @@ static void check_timers(void) {
     message m;
 
     for (i = 0; i < MAX_TIMERS; i++) {
-        // Delay for an extra tick to make sure of not firing early
-        if (timer[i].client >= 0 && millis >= timer[i].next + TICK) {
+        if (timer[i].client >= 0 && millis >= timer[i].next) {
             m.m_i1 = timer[i].next;
             send(timer[i].client, PING, &m);
 
@@ -54,11 +53,14 @@ static void create(int client, int delay, int repeat) {
         panic("Too many timers");
 
     timer[i].client = client;
-    timer[i].next = millis + delay;
-    if (repeat)
+    if (repeat) {
+        timer[i].next = millis + delay;
         timer[i].period = delay;
-    else
+    } else {
+        // Add TICK to be sure that the timer does not go off early
+        timer[i].next = millis + delay + TICK;
         timer[i].period = 0;
+    }
 }
 
 static int TIMER_TASK;
