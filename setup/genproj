@@ -17,7 +17,7 @@ project() {
 
 project x1000-echo part2 echo.c echo.hex
 project x1100-instrs part1 func.s func.hex
-project x2040-pureasm pureasm blinky.s blinky.hex
+project x2040-pureasm part1 blinky.s blinky.hex
 project x2100-serial part2 primes.c primes.hex
 project x2200-interrupt part2 primes2.c primes2.hex
 project x2300-intrmech part2 bitbang.c bitbang.hex
