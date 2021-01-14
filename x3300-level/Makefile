@@ -21,7 +21,7 @@ vpath %.h ../microbian
 	$(AS) $(CPU) $< -o $@
 
 %.elf: %.o accel.o ../microbian/microbian.a ../microbian/startup.o
-	$(CC) $(CPU) $(CFLAGS) -T ../microbian/nRF51822.ld \
+	$(CC) $(CPU) $(CFLAGS) -T ../microbian/nRF52833.ld \
 		$^ -nostdlib -lgcc -lc -o $@ -Wl,-Map,$*.map
 	$(SIZE) $@
 
