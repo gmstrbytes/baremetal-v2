@@ -81,7 +81,6 @@ static void radio_task(int dummy) {
     int mode = DISABLED;
     int listener = 0, n;
     void *buffer = NULL;
-    int rgroup = 0;
     message m;
 
     init_radio();
@@ -99,7 +98,7 @@ static void radio_task(int dummy) {
             clear_pending(RADIO_IRQ);
             enable_irq(RADIO_IRQ);
 
-            if (RADIO_CRCSTATUS == 0 || packet_buffer.group != rgroup) {
+            if (RADIO_CRCSTATUS == 0 || packet_buffer.group != group) {
                 // Ignore the packet and listen again
                 RADIO_START = 1;
                 break;
@@ -117,14 +116,14 @@ static void radio_task(int dummy) {
             if (mode == LISTENING)
                 panic("radio supports only one listener at a time");
             listener = m.m_sender;
-            buffer = m.m_p2;
+            buffer = m.m_p1;
 
             if (mode == DISABLED) {
                 RADIO_RXEN = 1;
                 await(&RADIO_READY);
             }
 
-            RADIO_PREFIX0 = rgroup = group;
+            RADIO_PREFIX0 = group;
             RADIO_START = 1;
             mode = LISTENING;
             break;
@@ -161,7 +160,6 @@ static void radio_task(int dummy) {
                 // Go back to listening
                 RADIO_RXEN = 1;
                 await(&RADIO_READY);
-                RADIO_PREFIX0 = rgroup;
                 RADIO_START = 1;
             }
 

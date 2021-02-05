@@ -5,7 +5,12 @@
 #include "hardware.h"
 #include <string.h>
 
-const image blank_image =
+/* Note that blank is not the same as an image that is all zeroes,
+because it has the row bits set.  Copying blank and then setting
+(actually, clearing) column bits for each row results in an image 
+that displays properly. */
+
+const image blank =
     IMAGE(0,0,0,0,0,
           0,0,0,0,0,
           0,0,0,0,0,
@@ -13,7 +18,7 @@ const image blank_image =
           0,0,0,0,0);
 
 void image_clear(image img) {
-    memcpy(img, blank_image, sizeof(image));
+    memcpy(img, blank, sizeof(image));
 }
 
 #ifdef UBIT_V1
@@ -56,6 +61,7 @@ void display_task(int dummy) {
 
 #ifdef UBIT_V1
     GPIO_DIRSET = LED_MASK;
+    timer_pulse(3);
 #endif
     
 #ifdef UBIT_V2
@@ -68,6 +74,8 @@ void display_task(int dummy) {
     gpio_drive(ROW3, GPIO_DRIVE_S0H1);
     gpio_drive(ROW4, GPIO_DRIVE_S0H1);
     gpio_drive(ROW5, GPIO_DRIVE_S0H1);
+
+    timer_pulse(5);
 #endif
 
     image_clear(curimg);
@@ -79,7 +87,6 @@ void display_task(int dummy) {
         GPIO_OUTCLR = 0xfff0;
         GPIO_OUTSET = curimg[n++];
         if (n == 3) n = 0;
-        timer_delay(5);
 #endif
 #ifdef UBIT_V2
         /* To avoid ghosting, clear GPIO0 (which contains the row bits)
@@ -90,8 +97,9 @@ void display_task(int dummy) {
         GPIO0_OUTSET = curimg[n];
         n += 2;
         if (n == 10) n = 0;
-        timer_delay(3);
 #endif
+
+        receive(PING, NULL);
     }
 }
 

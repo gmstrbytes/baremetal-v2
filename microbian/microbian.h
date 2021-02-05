@@ -136,5 +136,6 @@ void radio_init(void);
 void display_show(const unsigned *img);
 void display_init(void);
 
+extern const unsigned blank[];
 void image_clear(unsigned *img);
 void image_set(int x, int y, unsigned *img);
