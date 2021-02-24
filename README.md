@@ -4,6 +4,8 @@ Source code for use with the book 'Bare Metal micro:bit'.
 
 This copy of the repository has code that suits the newer Version
 2 of the BBC micro:bit, based on the Nordic nRF52833 chip.
+See the [other repository](http://github.com/Spivoxity/baremetal-v2) for
+code that runs on the Version 2 board.
 
 Draft material for the book will appear at
 
