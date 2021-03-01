@@ -169,7 +169,7 @@ unsigned timer_micros(void) {
        between the two readings, that indicates the expiry happened
        before the first reading, so an extra tick should be added.*/
 
-    intr_disable()
+    intr_disable();
 #ifdef SYSTICK
     ticks1 = SYST_CVR >> 6;
     extra = SYST_CSR & BIT(SYST_CSR_COUNTFLAG);
