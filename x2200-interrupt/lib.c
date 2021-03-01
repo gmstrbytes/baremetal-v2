@@ -66,9 +66,23 @@ unsigned xtou(char *p) {
     return x;
 }
 
-/* We need sprintf to be thread-safe, so a trick is needed: in
-   _do_print, the parameter q is either a function to call or the
-   address of a character pointer used with sprintf. */
+
+/* FORMATTED OUTPUT */
+
+/* The functions defined here provide a version of printf that calls a
+client-supplied function print_buf to output characters, a thread-safe
+version of sprintf, and a skeleton do_print that calls a supplied
+function on each output character.  The print_buf interface is
+potentially the most efficient, because printf buffers characters
+internally and passes them to print_buf 16 at a time, reducing context
+switches if print_buf sends messages to a device driver process.
+
+The three public functions share a common skeleton _do_print that
+takes as parameters a "putc-function" and a pointer q that is passed
+to the function with each character.  Different putc-functions and
+different interpretations of the pointer q are needed for different
+applications. */
+
 
 /* do_string -- output or buffer each character of a string */
 static void do_string(void (*putc)(void *, char), void *q, char *str) {
@@ -116,13 +130,13 @@ void _do_print(void (*putc)(void *, char), void *q,
     }
 }     
 
-/* f_printc -- call q as a function */
+/* f_printc -- putc-function that calls q as a function */
 static void f_printc(void *q, char c) {
     void (*f)(char) = q;
     f(c);
 }
 
-/* f_storec -- use q as a character pointer */
+/* f_storec -- putc-function that uses q as a character pointer */
 void f_storec(void *q, char c) {
     char **p = q;
     *(*p)++ = c;
@@ -145,31 +159,30 @@ int sprintf(char *buf, const char *fmt, ...) {
     return (p - buf);
 }
 
-/* To reduce the number of context switches needed when printf runs
-   under micro:bian, it maintains a small internal buffer that is
-   flushed just before printf returns: unlike the usual buffering
-   scheme, there is no need for fflush(stdout), something that makes
-   things easier for beginners.  This buffer complicates the behaviour
-   of the 'chaos' example: don't be tempted to make the buffer bigger,
-   or all chaos will be removed!  Clients other than micro:bian see no
-   benefit from the buffering because print_buf is implemented by
-   repeated calls to serial_putc. */
+/* printf's internal buffer complicates the behaviour of the 'chaos'
+example: don't be tempted to make the buffer bigger, or all chaos will
+be removed!  Clients not running under micro:bian see no benefit from
+the buffering because there print_buf is usually implemented by
+repeated calls to serial_putc. */
 
 /* print_buf -- must be provided by client */
 extern void print_buf(char *buf, int n);
 
 #define NBUF 16
 
+/* struct buffer -- buffer for use by printf */
 struct buffer {
-    char buf[NBUF];
-    int nbuf;
+    char buf[NBUF];             /* Characters in the buffer */
+    int nbuf;                   /* Number of characters */
 };
     
+/* flush -- flush a buffer by calling print_buf */
 static void flush(struct buffer *b) {
     print_buf(b->buf, b->nbuf);
     b->nbuf = 0;
 }
 
+/* f_bufferc -- putc-function that stores characters in a buffer */
 static void f_bufferc(void *q, char c) {
     struct buffer *b = q;
     if (b->nbuf == NBUF) flush(b);

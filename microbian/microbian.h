@@ -13,9 +13,10 @@ typedef unsigned char byte;
 /* Common message types */
 #define INTERRUPT 1
 #define REPLY 2
-#define REGISTER 3
-#define PING 4
-#define REQUEST 5
+#define TIMEOUT 3
+#define REGISTER 4
+#define PING 5
+#define REQUEST 6
 #define READ 7
 #define WRITE 8
 #define OK 9
@@ -65,11 +66,13 @@ int start(char *name, void (*body)(int), int arg, int stksize);
 void yield(void);
 void send(int dst, int type, message *msg);
 void receive(int type, message *msg);
+void receive_t(int type, message *msg, int timeout);
 void sendrec(int dst, int type, message *msg);
 void connect(int irq);
 void priority(int p);
 void exit(void);
 void dump(void);
+void tick(int ms);
 
 /* interrupt -- send INTERRUPT message from handler */
 void interrupt(int pid);

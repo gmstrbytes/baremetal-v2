@@ -13,6 +13,7 @@ CODERAM void delay(unsigned n) {
     }
 }
 
+/* heart -- GPIO values for heart image */
 const unsigned heart[] = {
     0xd0200000, 0x00000000,
     0x00400000, 0x00000000,
@@ -21,12 +22,14 @@ const unsigned heart[] = {
     0x50080800, 0x00000020
 };
 
-const unsigned small[] =
-    IMAGE(0,0,0,0,0,
-          0,1,0,1,0,
-          0,1,1,1,0,
-          0,0,1,0,0,
-          0,0,0,0,0);
+/* small -- GPIO values for small heart */
+const unsigned small[] = {
+    d0200800, 00000020,
+    d0400000, 00000000,
+    50008000, 00000000,
+    51000800, 00000020,
+    d0080800, 00000020
+}
 
 #define JIFFY 3000              // Delay in microsecs
 
@@ -47,6 +50,7 @@ int pressed(int button) {
     return (GPIO0_IN & BIT(button)) == 0;
 }
 
+/* init -- main program */
 void init(void) {
     GPIO0_DIR = LED_MASK0;
     GPIO1_DIR = LED_MASK1;

@@ -5,50 +5,54 @@
 #include "hardware.h"
 #include <string.h>
 
-/* Modes:
-    DISABLED  -- doing nothing
-    READY     -- initialised for reception
-    LISTENING -- waiting for a packet, DMA already set up */
-#define DISABLED 0
-#define READY 1
-#define LISTENING 2
+/* RADIO_TASK -- process id for device driver */
+static int RADIO_TASK;
 
-#define FREQ 7 // Frequency 2407 MHz
+/* Operating modes */
+#define DISABLED 0              /* Doing nothing */
+#define READY 1                 /* Initialised for reception */
+#define LISTENING 2             /* Waiting for a packet, DMA set up */
+
+#define FREQ 7                  /* Frequency 2407 MHz */
 
 /* We use a packet format that agrees with the standard micro:bit
-   runtime.  That means prefixing the packet with three bytes
-   (version, group, protocol) and counting these three in the length:
-   the STATLEN feature of the radio does not do this. */
+runtime.  That means prefixing the packet with three bytes (version,
+group, protocol) and counting these three in the length: the STATLEN
+feature of the radio does not do this for us. */
 
 static struct radio_frame {
-    byte length;
-    byte version;
-    byte group;
-    byte protocol;
-    byte data[RADIO_PACKET];
+    byte length;                /* Packet length, excluding 3-byte prefix */
+    byte version;               /* Version: always 1 */
+    byte group;                 /* Radio group */
+    byte protocol;              /* Protocol identifier: always 1 */
+    byte data[RADIO_PACKET];    /* Payload */
 } packet_buffer;
 
+/* group -- group id for radio messages */
 static volatile int group = 0;
 
+/* init_radio -- initialise radio hardware */
 static void init_radio() {
-    RADIO_TXPOWER = 0; // Default transmit power
+    RADIO_TXPOWER = 0;          /* Default transmit power */
     RADIO_FREQUENCY = FREQ;
     RADIO_MODE = RADIO_MODE_NRF_1Mbit;
-    RADIO_BASE0 = 0x75626974; // That spells 'ubit'.
+    RADIO_BASE0 = 0x75626974;   /* That spells 'ubit' */
     RADIO_TXADDRESS = 0;
     RADIO_RXADDRESSES = BIT(0);
 
-    RADIO_PCNF0 = 0x8; // 8 bit length field; no S0 or S1
-    RADIO_PCNF1 =
-        BIT(RADIO_PCNF1_WHITEEN) | FIELD(RADIO_PCNF1_BALEN, 4)
-        | FIELD(RADIO_PCNF1_MAXLEN, RADIO_PACKET+3);
+    // Basic configuration
+    RADIO_PCNF0 = FIELD(RADIO_PCNF0_LFLEN, 8);
+    RADIO_PCNF1 = BIT(RADIO_PCNF1_WHITEEN)
+        | FIELD(RADIO_PCNF1_BALEN, 4)
+        | FIELD(RADIO_PCNF1_MAXLEN, RADIO_PACKET+3)
+        | FIELD(RADIO_PCNF1_ENDIAN, RADIO_ENDIAN_Little);
 
     // CRC settings -- matches micro_bit runtime
     RADIO_CRCCNF = 2;
     RADIO_CRCINIT = 0xffff;
     RADIO_CRCPOLY = 0x11021;
 
-    // Whitening -- ditto
+    // Whitening -- matches micro_bit runtime
     RADIO_DATAWHITEIV = 0x18;
 
     // Trim override?  Probably not needed on micro:bit
@@ -69,7 +73,8 @@ static void init_radio() {
     RADIO_PACKETPTR = (unsigned) &packet_buffer;    
 }
 
-static void await(unsigned volatile *event) {
+/* radio_await -- wait for expected interrupt */
+static void radio_await(unsigned volatile *event) {
     receive(INTERRUPT, NULL);
     assert(*event);
     *event = 0;
@@ -77,6 +82,7 @@ static void await(unsigned volatile *event) {
     enable_irq(RADIO_IRQ);
 }
 
+/* radio_task -- device driver for radio */
 static void radio_task(int dummy) {
     int mode = DISABLED;
     int listener = 0, n;
@@ -120,7 +126,7 @@ static void radio_task(int dummy) {
 
             if (mode == DISABLED) {
                 RADIO_RXEN = 1;
-                await(&RADIO_READY);
+                radio_await(&RADIO_READY);
             }
 
             RADIO_PREFIX0 = group;
@@ -132,7 +138,7 @@ static void radio_task(int dummy) {
             if (mode != DISABLED) {
                 // The radio was set up for receiving: disable it
                 RADIO_DISABLE = 1;
-                await(&RADIO_DISABLED);
+                radio_await(&RADIO_DISABLED);
             }
 
             // Assemble the packet
@@ -140,26 +146,26 @@ static void radio_task(int dummy) {
             packet_buffer.length = n+3;
             packet_buffer.version = 1;
             packet_buffer.group = group;
-            packet_buffer.protocol = 1; // Agrees with uBit datagrams
+            packet_buffer.protocol = 1;
             memcpy(packet_buffer.data, m.m_p1, n);
 
             // Enable for sending and transmit the packet
             RADIO_TXEN = 1;
-            await(&RADIO_READY);
+            radio_await(&RADIO_READY);
             RADIO_PREFIX0 = group;
             RADIO_START = 1;
-            await(&RADIO_END);
+            radio_await(&RADIO_END);
 
             // Disable the transmitter -- otherwise it jams the airwaves
             RADIO_DISABLE = 1;
-            await(&RADIO_DISABLED);
+            radio_await(&RADIO_DISABLED);
 
             if (mode != LISTENING)
                 mode = DISABLED;
             else {
                 // Go back to listening
                 RADIO_RXEN = 1;
-                await(&RADIO_READY);
+                radio_await(&RADIO_READY);
                 RADIO_START = 1;
             }
 
@@ -172,26 +178,29 @@ static void radio_task(int dummy) {
     }
 }
 
-static int RADIO;
-
+/* radio_group -- set group id for radio messages */
 void radio_group(int grp) {
     group = grp;
 }
 
+/* radio_send -- send radio packet */
 void radio_send(void *buf, int n) {
     message m;
     m.m_p1 = buf;
     m.m_i2 = n;
-    sendrec(RADIO, SEND, &m);
+    sendrec(RADIO_TASK, SEND, &m);
 }
 
+/* radio_receive -- receive radio packet and return length */
 int radio_receive(void *buf) {
+    // buf must have space for RADIO_PACKET bytes
     message m;
     m.m_p1 = buf;
-    sendrec(RADIO, RECEIVE, &m);
+    sendrec(RADIO_TASK, RECEIVE, &m);
     return m.m_i1;
 }
     
+/* radio_init -- start device driver */
 void radio_init(void) {
-    RADIO = start("Radio", radio_task, 0, 256);
+    RADIO_TASK = start("Radio", radio_task, 0, 256);
 }

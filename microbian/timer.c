@@ -1,11 +1,14 @@
 // timer.c
-// Copyright (c) 2018 J. M. Spivey
+// Copyright (c) 2018-2020 J. M. Spivey
 
 #include "microbian.h"
 #include "hardware.h"
 
+static int TIMER_TASK;
+
 #ifdef UBIT_V2
 #define TICK 1                  // Interval between updates (ms)
+// #define USE_SYSTICK 1
 #endif
 
 #ifndef TICK
@@ -15,12 +18,15 @@
 #define MAX_TIMERS 8
 
 /* Millis will overflow in about 46 days, but that's long enough. */
+
+/* millis -- milliseconds since boot */
 static unsigned millis = 0;
 
+/* timer -- array of data for pending timer messages */
 static struct {
-    int client;        // Process that receives message, or -1 if free
-    unsigned period;   // Interval between messages, or 0 for one-shot
-    unsigned next;     // Next time to send a message
+    int client;      /* Process that receives message, or -1 if empty */
+    unsigned period; /* Interval between messages, or 0 for one-shot */
+    unsigned next;   /* Next time to send a message */
 } timer[MAX_TIMERS];
 
 /* check_timers -- send any messages that are due */
@@ -52,23 +58,32 @@ static void create(int client, int delay, int repeat) {
     if (i == MAX_TIMERS)
         panic("Too many timers");
 
+    /* If we are between ticks when the timer is created, then the
+       timer will go off up to one tick early.  We could add on a tick
+       to compensate for this, but most applications work better
+       without it.  Effectively, the delay is counted from the
+       previous timer tick, and if it is created as a response to that
+       tick, then the effect is what is usually wanted. */
+
     timer[i].client = client;
-    if (repeat) {
-        timer[i].next = millis + delay;
-        timer[i].period = delay;
-    } else {
-        // Add TICK to be sure that the timer does not go off early
-        timer[i].next = millis + delay + TICK;
-        timer[i].period = 0;
-    }
+    timer[i].next = millis + delay;
+    timer[i].period = repeat;
 }
 
-static int TIMER_TASK;
+#ifdef USE_SYSTICK
+
+/* systick_handler -- interrupt handler */
+void systick_handler(void) {
+    millis += TICK;
+    (void) SYST_CSR;            // Read counter flaf to clear it
+    interrupt(TIMER_TASK);
+}
+
+#else
 
 /* timer1_handler -- interrupt handler */
 void timer1_handler(void) {
     // Update the time here so it is accessible to timer_micros
-
     if (TIMER1_COMPARE[0]) {
         millis += TICK;
         TIMER1_COMPARE[0] = 0;
@@ -76,13 +91,21 @@ void timer1_handler(void) {
     }
 }
 
+#endif
+
 static void timer_task(int n) {
     message m;
 
+#ifdef USE_SYSTICK
+    SYST_RVR = SYSTICK_CLOCK / 1000;
+    SYST_CVR = 0;
+    SYST_CSR = FIELD(SYST_CSR_CLKSOURCE, SYST_CLKSOURCE_Internal)
+        | BIT(SYST_CSR_TICKINT) | BIT(SYST_CSR_ENABLE);
+    enable_irq(SYSTICK_IRQ);
+#else
     /* We use Timer 1 because its 16-bit mode is adequate for a clock
        with up to 1us resolution and 5ms period, leaving the 32-bit
        Timer 0 for other purposes. */
-
     TIMER1_STOP = 1;
     TIMER1_MODE = TIMER_MODE_Timer;
     TIMER1_BITMODE = TIMER_BITMODE_16Bit;
@@ -93,12 +116,14 @@ static void timer_task(int n) {
     TIMER1_INTENSET = BIT(TIMER_INT_COMPARE0);
     TIMER1_START = 1;
     enable_irq(TIMER1_IRQ);
+#endif
 
     while (1) {
         receive(ANY, &m);
 
         switch (m.m_type) {
         case INTERRUPT:
+            tick(TICK);
             check_timers();
             break;
 
@@ -112,6 +137,7 @@ static void timer_task(int n) {
     }
 }
 
+/* timer_init -- start the timer task */
 void timer_init(void) {
     int i;
 
@@ -126,27 +152,40 @@ unsigned timer_now(void) {
     return millis;
 }
 
+/* The result of timer_micros will overflow after 71 minutes, but even
+if it does overflow, shorter durations can be measured by taking the
+difference of two readings with unsigned subtraction. */
+
 /* timer_micros -- return microseconds since startup */
 unsigned timer_micros(void) {
     unsigned my_millis, ticks1, ticks2, extra;
     
-    /* We must allow for the possibility the timer has overflowed but
-       the interrupt has not yet been handled. Worse, the timer
-       overflow could happen between looking at the timer and looking
-       at the interrupt flag. */
+    /* We must allow for the possibility the timer has expired but the
+       interrupt has not yet been handled. Worse, the timer expiry
+       could happen between looking at the timer and looking at the
+       interrupt flag.  The approach is to take two readings with
+       interrupts disabled, one before and one after checking the
+       flag.  If the flag is set, but the reading has not gone down
+       between the two readings, that indicates the expiry happened
+       before the first reading, so an extra tick should be added.*/
 
-    intr_disable();
-    TIMER1_CAPTURE[1] = 1;      // Capture count before testing irq
-    extra = TIMER1_COMPARE[0];  // Inspect the IRQ
+    intr_disable()
+#ifdef SYSTICK
+    ticks1 = SYST_CVR >> 6;
+    extra = SYST_CSR & BIT(SYST_CSR_COUNTFLAG);
+    ticks2 = SYST_CVR >> 6;
+#else
+    TIMER1_CAPTURE[1] = 1;      // Capture count before testing event
+    extra = TIMER1_COMPARE[0];  // Inspect the expiry event
     TIMER1_CAPTURE[2] = 1;      // Capture count afterwards
     ticks1 = TIMER1_CC[1];
     ticks2 = TIMER1_CC[2];
+#endif
     my_millis = millis;
     intr_enable();
 
-    /* No correction if overflow happened after the first observation */
-    if (extra && ticks1 <= ticks2)
-        my_millis += TICK;
+    /* Correct my_millis if the timer expired */
+    if (extra && ticks1 <= ticks2) my_millis += TICK;
 
     return 1000 * my_millis + ticks1;
 }
@@ -164,7 +203,7 @@ void timer_delay(int msec) {
 void timer_pulse(int msec) {
     message m;
     m.m_i1 = msec;
-    m.m_i2 = 1;                /* Repetitive */
+    m.m_i2 = msec;              /* Repetitive */
     send(TIMER_TASK, REGISTER, &m);
 }
 
@@ -172,4 +211,3 @@ void timer_pulse(int msec) {
 void timer_wait(void) {
     receive(PING, NULL);
 }
-

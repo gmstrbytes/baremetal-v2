@@ -8,6 +8,8 @@
 #define TX USB_TX
 #define RX USB_RX
 
+static int SERIAL_TASK;
+
 /* Message types for serial task */
 #define PUTC 16
 
@@ -100,18 +102,16 @@ static void serial_task(int arg) {
     }
 }
 
-static int SERIAL;
-
 /* myserial_init -- start the serial driver task */
 void myserial_init(void) {
-    SERIAL = start("Serial", serial_task, 0, 256);
+    SERIAL_TASK = start("Serial", serial_task, 0, 256);
 }
 
 /* myserial_putc -- queue a character for output */
 void myserial_putc(char ch) {
     message m;
     m.m_i1 = ch;
-    send(SERIAL, PUTC, &m);
+    send(SERIAL_TASK, PUTC, &m);
 }
 
 /* print_buf -- output routine for use by printf */

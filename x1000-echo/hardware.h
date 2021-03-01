@@ -83,12 +83,14 @@ argument to be a macro that expands the a 'position, width' pair. */
 
 #define I2C_INTERNAL 0
 #define I2C_EXTERNAL 1
+#define N_I2CS 2
 
 /* TODO: Logo touch, mic power, mic input, speaker */
 
 /* Interrupts */
 #define SVC_IRQ    -5
 #define PENDSV_IRQ -2
+#define SYSTICK_IRQ -1
 #define RADIO_IRQ   1
 #define UART0_IRQ   2
 #define I2C0_IRQ    3
@@ -112,11 +114,13 @@ argument to be a macro that expands the a 'position, width' pair. */
 #define PWM3_IRQ   45
 #define SPI1_IRQ   47
 
+#define N_INTERRUPTS 64
+
 // For compatibility, allow UART as a synonym for UART0
 #define UART_IRQ UART0_IRQ
 #define uart_handler uart0_handler
 
-/* System registers */
+/* System control block */
 #define SCB_CPUID              ADDR(0xe000ed00)
 #define SCB_ICSR               ADDR(0xe000ed04)
 #define   SCB_ICSR_PENDSVSET 28
@@ -127,11 +131,29 @@ argument to be a macro that expands the a 'position, width' pair. */
 #define   SCB_SCR_SEVONPEND 4
 #define SCB_SHPR              ARRAY(0xe000ed1c)
 
+/* Nested vector interupt controller */
 #define NVIC_ISER             ARRAY(0xe000e100)
 #define NVIC_ICER             ARRAY(0xe000e180)
 #define NVIC_ISPR             ARRAY(0xe000e200)
 #define NVIC_ICPR             ARRAY(0xe000e280)
 #define NVIC_IPR              ARRAY(0xe000e400)
+
+/* Systick timer */
+#define SYST_CSR               ADDR(0xe000e010)
+#define  SYST_CSR_COUNTFLAG 16
+#define  SYST_CSR_CLKSOURCE 2, 1
+#define    SYST_CLKSOURCE_External 0
+#define    SYST_CLKSOURCE_Internal 1
+#define  SYST_CSR_TICKINT 1
+#define  SYST_CSR_ENABLE 0            
+#define SYST_RVR               ADDR(0xe000e014)
+#define SYST_CVR               ADDR(0xe000e018)
+#define SYST_CALIB             ADDR(0xe000e01c)
+#define   SYST_CALIB_NOREF 31
+#define   SYST_CALIB_SKEW 30
+#define   SYST_CALIB_TENMS 0, 24
+
+#define SYSTICK_CLOCK 64000000
 
 /* Power */
 #define POWER_CONSTLAT         ADDR(0x40000078)
@@ -321,11 +343,17 @@ struct _ppi_frk {
 #define RADIO_MODE              ADDR(0x40001510)
 #define   RADIO_MODE_NRF_1Mbit 0
 #define RADIO_PCNF0             ADDR(0x40001514)
+#define   RADIO_PCNF0_LFLEN 0, 3
+#define   RADIO_PCNF0_S0LEN 8, 1
+#define   RADIO_PCNF0_S1LEN 16, 4
 #define RADIO_PCNF1             ADDR(0x40001518)
-#define   RADIO_PCNF1_WHITEEN 25
-#define   RADIO_PCNF1_BALEN 16, 3
 #define   RADIO_PCNF1_MAXLEN 0, 8
 #define   RADIO_PCNF1_STATLEN 8, 8
+#define   RADIO_PCNF1_BALEN 16, 3
+#define   RADIO_PCNF1_ENDIAN 24, 1
+#define     RADIO_ENDIAN_Little 0
+#define     RADIO_ENDIAN_Big 1
+#define   RADIO_PCNF1_WHITEEN 25
 #define RADIO_BASE0             ADDR(0x4000151c)
 #define RADIO_BASE1             ADDR(0x40001520)
 #define RADIO_PREFIX0           ADDR(0x40001524)
@@ -809,6 +837,27 @@ union _pwm {
 #define PWM0_LOOP               PWM0.W_LOOP
 #define PWM0_SEQ                PWM0.W_SEQ
 #define PWM0_PSEL               PWM0.W_PSEL
+
+#define PWM1_STOP               PWM1.W_STOP
+#define PWM1_SEQSTART           PWM1.W_SEQSTART
+#define PWM1_NEXTSTEP           PWM1.W_NEXTSTEP
+#define PWM1_STOPPED            PWM1.W_STOPPED
+#define PWM1_SEQSTARTED         PWM1.W_SEQSTARTED
+#define PWM1_SEQEND             PWM1.W_SEQEND
+#define PWM1_PWMPERIODEND       PWM1.W_PWMPERIODEND
+#define PWM1_LOOPSDONE          PWM1.W_LOOPSDONE
+#define PWM1_SHORTS             PWM1.W_SHORTS
+#define PWM1_INTEN              PWM1.W_INTEN
+#define PWM1_INTENSET           PWM1.W_INTENSET
+#define PWM1_INTENCLR           PWM1.W_INTENCLR
+#define PWM1_ENABLE             PWM1.W_ENABLE
+#define PWM1_MODE               PWM1.W_MODE
+#define PWM1_COUNTERTOP         PWM1.W_COUNTERTOP
+#define PWM1_PRESCALER          PWM1.W_PRESCALER
+#define PWM1_DECODER            PWM1.W_DECODER
+#define PWM1_LOOP               PWM1.W_LOOP
+#define PWM1_SEQ                PWM1.W_SEQ
+#define PWM1_PSEL               PWM1.W_PSEL
 
 // PWM sequence parameters
 #define PWM_SEQ_COMPARE 0, 15

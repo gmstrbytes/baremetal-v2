@@ -10,16 +10,18 @@
 #define RX USB_RX
 #endif
 
+static int SERIAL_TASK;
+
 /* Message types for serial task */
 #define PUTC 16
 #define GETC 17
 #define PUTBUF 18
 
 /* There are two buffers, one for characters waiting to be output, and
-   another for input characters waiting to be read by other processes.
-   The input buffer has |n_edit| characters in the current line, still
-   subject to editing, and |n_avail| characters in previous lines that
-   are available to other processes. */
+another for input characters waiting to be read by other processes.
+The input buffer has |n_edit| characters in the current line, still
+subject to editing, and |n_avail| characters in previous lines that
+are available to other processes. */
 
 /* NBUF -- size of input and output buffers.  Should be a power of 2. */
 #define NBUF 256
@@ -98,10 +100,10 @@ static void keypress(char ch) {
 }
 
 /* The clear_pending() call below is needed because the UART interrupt
-   handler disables the IRQ for the UART in the NVIC, but doesn't
-   disable the UART itself from sending interrupts.  The pending bit
-   is cleared on return from the interrupt handler, but that doesn't
-   stop the UART from setting it again. */
+handler disables the IRQ for the UART in the NVIC, but doesn't disable
+the UART itself from sending interrupts.  The pending bit is cleared
+on return from the interrupt handler, but that doesn't stop the UART
+from setting it again. */
 
 #ifdef UBIT
 /* serial_interrupt -- handle serial interrupt */
@@ -281,24 +283,22 @@ static void serial_task(int arg) {
     }
 }
 
-static int SERIAL;
-
 /* serial_init -- start the serial driver task */
 void serial_init(void) {
-    SERIAL = start("Serial", serial_task, 0, 256);
+    SERIAL_TASK = start("Serial", serial_task, 0, 256);
 }
 
 /* serial_putc -- queue a character for output */
 void serial_putc(char ch) {
     message m;
     m.m_i1 = ch;
-    send(SERIAL, PUTC, &m);
+    send(SERIAL_TASK, PUTC, &m);
 }
 
 /* serial_getc -- request an input character */
 char serial_getc(void) {
     message m;
-    send(SERIAL, GETC, NULL);
+    send(SERIAL_TASK, GETC, NULL);
     receive(REPLY, &m);
     return m.m_i1;
 }
@@ -308,5 +308,5 @@ void print_buf(char *buf, int n) {
     message m;
     m.m_p1 = buf;
     m.m_i2 = n;
-    sendrec(SERIAL, PUTBUF, &m);
+    sendrec(SERIAL_TASK, PUTBUF, &m);
 }

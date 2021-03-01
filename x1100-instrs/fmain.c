@@ -129,6 +129,11 @@ char *fmt_fixed(unsigned t, unsigned n, int k) {
     return p;
 }
 
+/* easy_mod -- modulo operation for use in digits example */
+unsigned easy_mod(unsigned a, unsigned b) {
+    return a % b;
+}
+
 #ifdef UBIT_V1
 #define FUDGE 20                // ticks of overhead for function call
 #define MULT 1
@@ -161,7 +166,7 @@ void init(void) {
 
     serial_init();
     printf("\nHello micro:world!\n\n");
-      
+
 #ifdef UBIT
     led_init();
 

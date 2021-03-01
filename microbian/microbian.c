@@ -8,6 +8,12 @@
 
 /* PROCESS DESCRIPTORS */
 
+/* Each process has a descriptor, allocated when the process is
+created.  The p_next field in the descriptor allows each process to be
+linked into at most one queue -- either the queue of ready processes
+at some priority level, or the queue of senders waiting to deliver a
+message to a particular receiver process. */
+
 struct proc {
     int p_pid;                  /* Process ID (equal to index) */
     char p_name[16];            /* Name for debugging */
@@ -21,6 +27,7 @@ struct proc {
     int p_pending;              /* Whether HARDWARE message pending */
     int p_msgtype;              /* Message type to send or recieve */
     message *p_message;         /* Pointer to message buffer */
+    int p_timeout;              /* Timeout for receive */
     struct proc *p_next;        /* Next process in ready or send queue */
 };
 
@@ -31,6 +38,8 @@ struct proc {
 #define RECEIVING 3
 #define SENDREC 4
 #define IDLING 5
+
+#define NO_TIME 0x80000000
 
 
 /* STORAGE ALLOCATION */
@@ -49,6 +58,7 @@ static unsigned char *htop = __stack_limit;
 
 #define ROUNDUP(x, n)  (((x)+(n)-1) & ~((n)-1))
 
+/* sbrk -- allocate space at the bottom of the heap */
 static void *sbrk(int inc) {
     hbot = (unsigned char *) ROUNDUP((unsigned) hbot, 8);
     inc = ROUNDUP(inc, 8);
@@ -60,6 +70,7 @@ static void *sbrk(int inc) {
     return result;
 }
 
+/* new_proc -- allocate a process descriptor from the top of the heap */
 static struct proc *new_proc(void) {
     if (htop - hbot < sizeof(struct proc))
         panic("No space for process");
@@ -83,6 +94,7 @@ static struct proc *idle_proc;
 static void kprintf_setup(void);
 static void kprintf_internal(char *fmt, ...);
 
+/* pad -- pad with spaces to a specified width */
 static void pad(char *buf, int width) {
     int w = strlen(buf);
     if (w < width) {
@@ -107,8 +119,8 @@ static void microbian_dump(void) {
     kprintf_setup();
     kprintf_internal("\r\nPROCESS DUMP\r\n");
 
-    // Our version of printf is a bit feeble, so the following is
-    // more painful than it should be.
+    /* Our version of printf is a bit feeble, so the following is
+       more painful than it should be. */
 
     for (int pid = 0; pid < os_nprocs; pid++) {
         struct proc *p = os_ptable[pid];
@@ -133,7 +145,7 @@ static struct queue {
     struct proc *q_head, *q_tail;
 } os_readyq[NPRIO];
 
-/* make_ready -- add process to end of appropriate queue */
+/* make_ready -- add process to end of the ready queue for its priority */
 static inline void make_ready(struct proc *p) {
     int prio = p->p_priority;
     if (prio == P_IDLE) return;
@@ -159,15 +171,109 @@ static inline void choose_proc(void) {
             return;
         }
     }
-
     os_current = idle_proc;
+}
+
+/* deliver -- copy a message and fill in standard fields */
+static inline void deliver(message *buf, int src, int type, message *msg) {
+    if (buf) {
+        if (msg) *buf = *msg;
+        buf->m_sender = src;
+        buf->m_type = type;
+    }
+}
+
+
+/* TIMEOUTS */
+
+/* Programs that include a timer may also use a form of receive() with
+a timeout, so that a message of type TIMEOUT from hardware is
+delivered after an interval if not genuine message has arrived.
+
+A process p has a timeout set if p->p_timeout != NO_TIME.  Such
+processes are also listed in timeout[0..n_timeouts), so we can find
+them quickly on each tick.  The global ticks variable and the
+p_timeout field count in ticks from the last timer update, and the
+next update is due when ticks exceeds next_time.  This value can be
+negative, because we delay firing timeouts until the tick after they
+are due, so as to avoid firing them early.  If calls the tick() come
+at regular intervals (whatever they are), then this scheme ensures
+that no timer fires earlier than it should, even if the timer is set
+just before a tick. */
+
+static struct proc *timeout[NPROCS];
+static int n_timeouts = 0;
+
+static int ticks = 0;           /* Accumulated ticks since last update (ms) */
+static int next_time = NO_TIME; /* Earliest timeout due (could be -ve) */
+
+/* set_timeout -- schedule a timeout */
+static void set_timeout(int ms) {
+    int due = ticks + ms;
+    assert(n_timeouts < NPROCS);
+    assert(os_current->p_timeout == NO_TIME);
+    os_current->p_timeout = due;
+    timeout[n_timeouts++] = os_current;
+    if (next_time == NO_TIME || due < next_time)
+        next_time = due;
+}
+
+/* cancel_timeout -- cancel a timeout when before it is due */
+static void cancel_timeout(struct proc *p) {
+    assert(p->p_timeout != NO_TIME);
+    p->p_timeout = NO_TIME;
+
+    // Delete p from the timeout array
+    for (int i = 0; i < n_timeouts; i++) {
+        if (timeout[i] == p) {
+            timeout[i] = timeout[--n_timeouts];
+            return;
+        }
+    }
+
+    panic("Cancelling an unset timeout");
+}
+
+/* mini-tick -- register a clock tick and fire any timeouts due */
+void mini_tick(int ms) {
+    if (next_time == NO_TIME)
+        // No timers active
+        return;
+    else if (ticks <= next_time) {
+        // No timer yet expired
+        ticks += ms;
+        return;
+    }
+
+    // Search for expired timers
+    int n = 0;                  /* Number of timers remaining */
+    next_time = NO_TIME;
+    for (int j = 0; j < n_timeouts; j++) {
+        struct proc *pdst = timeout[j];
+        assert(pdst->p_timeout != NO_TIME);
+        if (pdst->p_timeout >= ticks) {
+            // The timer is not yet expired, so update its expiry time
+            pdst->p_timeout -= ticks + ms;
+            timeout[n++] = pdst;
+            if (next_time == NO_TIME || pdst->p_timeout < next_time)
+                next_time = pdst->p_timeout;
+        } else {
+            // Send the TIMEOUT message
+            pdst->p_timeout = NO_TIME;
+            deliver(pdst->p_message, HARDWARE, TIMEOUT, NULL);
+            make_ready(pdst);
+        }
+    }
+
+    ticks = 0;
+    n_timeouts = n;
 }
 
 
 /* SEND AND RECEIVE */
 
 /* These versions of send and receive are invoked indirectly from user
-   processes via the system calls send() and receive(). */
+processes via the system calls send() and receive(). */
 
 /* accept -- test if a process is waiting for a message of given type */
 static inline int accept(struct proc *pdest, int type) {
@@ -181,15 +287,6 @@ static inline void set_state(struct proc *p, int state,
     p->p_state = state;
     p->p_msgtype = type;
     p->p_message = msg;
-}
-
-/* deliver -- copy a message and fill in standard fields */
-static inline void deliver(message *buf, int src, int type, message *msg) {
-    if (buf) {
-        if (msg) *buf = *msg;
-        buf->m_sender = src;
-        buf->m_type = type;
-    }
 }
 
 /* enqueue -- add current process to a receiver's queue */
@@ -229,7 +326,8 @@ static struct proc *find_sender(struct proc *pdst, int type) {
 static void await_reply(struct proc *pdst, message *msg) {
     struct proc *psrc = find_sender(pdst, REPLY);
     if (psrc != NULL) {
-        /* Unlikely but not impossible: a REPLY message is already waiting */
+        /* Unlikely but not impossible: a REPLY message is already waiting.
+           It can't come from the process pdst. */
         deliver(pdst->p_message, psrc->p_pid, REPLY, msg);
         make_ready(pdst);
         make_ready(psrc);
@@ -249,6 +347,8 @@ static void mini_send(int dest, int type, message *msg) {
     if (accept(pdest, type)) {
         // Receiver is waiting: deliver the message and run receiver
         deliver(pdest->p_message, src, type, msg);
+        if (pdest->p_timeout != NO_TIME)
+            cancel_timeout(pdest);
         make_ready(pdest);
         make_ready(os_current);
     } else {
@@ -261,7 +361,7 @@ static void mini_send(int dest, int type, message *msg) {
 }
 
 /* mini_receive -- receive a message */
-static void mini_receive(int type, message *msg) {
+static void mini_receive(int type, message *msg, int timeout) {
     // First see if an interrupt is pending
     if (os_current->p_pending && (type == ANY || type == INTERRUPT)) {
         os_current->p_pending = 0;
@@ -295,8 +395,15 @@ static void mini_receive(int type, message *msg) {
         }
     }
 
+    if (timeout == 0) {
+        // No message, so time out immediately
+        deliver(msg, HARDWARE, TIMEOUT, NULL);
+        return;
+    }
+
     // No luck: we must wait.
     set_state(os_current, RECEIVING, type, msg);
+    if (timeout > 0) set_timeout(timeout);
     choose_proc();
 }    
 
@@ -328,14 +435,13 @@ static void mini_sendrec(int dest, int type, message *msg) {
 /* INTERRUPT HANDLING */
 
 /* Interrupts send an INTERRUPT message (from HARDWARE) to a
-   registered handler process.  The default beheviour is to disable
-   the relevant IRQ in the interrupt handler, so that it can be
-   re-enabled in the handler once it has reacted to the interrupt.
+registered handler process.  The default beheviour is to disable the
+relevant IRQ in the interrupt handler, so that it can be re-enabled in
+the handler once it has reacted to the interrupt.  We only deal with
+the genuine interrupts >= 0, not the 16 exceptions that are < 0 this way. */
 
-   We only deal with the 32 interrupts >= 0, not the 16 exceptions
-   that are < 0 this way. */
-
-static int os_handler[32];
+/* os_handler -- pid of handler process for each interrupt */
+static int os_handler[N_INTERRUPTS];
 
 /* connect -- connect the current process to an IRQ */
 void connect(int irq) {
@@ -369,10 +475,10 @@ void interrupt(int dest) {
     }
 }
 
-/* All interrupts are handled by this common handler, which disables the
-   interrupt temporarily, then sends or queues a message to the registered
-   handler task.  Normally the handler task will deal with the cause of the
-   interrupt, then re-enable it. */
+/* All interrupts are handled by this common handler, which disables
+the interrupt temporarily, then sends or queues a message to the
+registered handler task.  Normally the handler task will deal with the
+cause of the interrupt, then re-enable it. */
 
 /* default_handler -- handler for most interrupts */
 void default_handler(void) {
@@ -392,7 +498,8 @@ void hardfault_handler(void) {
 
 /* INITIALISATION */
 
-static struct proc *init_proc(char *name, unsigned stksize) {
+/* create_proc -- allocate and initialise process descriptor */
+static struct proc *create_proc(char *name, unsigned stksize) {
     int pid;
     struct proc *p;
     unsigned char *stack;
@@ -401,6 +508,7 @@ static struct proc *init_proc(char *name, unsigned stksize) {
     if (os_nprocs >= NPROCS)
         panic("Too many processes");
 
+    /* Allocate descriptor and stack space */
     pid = os_nprocs++;
     p = os_ptable[pid] = new_proc();
     stack = sbrk(stksize);
@@ -409,6 +517,7 @@ static struct proc *init_proc(char *name, unsigned stksize) {
     /* Blank out the stack space to help detect overflow */
     for (unsigned *p = (unsigned *) stack; p < sp; p++) *p = BLANK;
 
+    /* Fill in fields of the descriptor */
     p->p_pid = pid;
     strncpy(p->p_name, name, 15);
     p->p_name[15] = '\0';
@@ -420,6 +529,7 @@ static struct proc *init_proc(char *name, unsigned stksize) {
     p->p_waiting = 0;
     p->p_pending = 0;
     p->p_msgtype = ANY;
+    p->p_timeout = NO_TIME;
     p->p_message = NULL;
     p->p_next = NULL;
 
@@ -443,7 +553,7 @@ static struct proc *init_proc(char *name, unsigned stksize) {
 
 /* start -- initialise process to run later */
 int start(char *name, void (*body)(int), int arg, int stksize) {
-    struct proc *p = init_proc(name, roundup(stksize, 8));
+    struct proc *p = create_proc(name, roundup(stksize, 8));
 
     if (os_current != NULL)
         panic("start() called after scheduler startup");
@@ -473,17 +583,17 @@ void init(void);
 /* __start -- start the operating system */
 void __start(void) {
     // Create idle task as process 0
-    idle_proc = init_proc("IDLE", IDLE_STACK);
+    idle_proc = create_proc("IDLE", IDLE_STACK);
     idle_proc->p_state = IDLING;
     idle_proc->p_priority = P_IDLE;
 
-    // Call the application's setup
+    // Call the application's setup function
     init();
 
     // The main program morphs into the idle process.
     os_current = idle_proc;
     set_stack(os_current->p_sp);
-    yield();                    // Pick a real process to run
+    yield();                    // Pick a genuine process to run
 
     // Idle only runs again when there's nothing to do.
     while (1) pause();
@@ -499,6 +609,12 @@ void __start(void) {
 #define SYS_SENDREC 3
 #define SYS_EXIT 4
 #define SYS_DUMP 5
+#define SYS_TICK 6
+
+/* System calls retrieve their arguments from the exception frame that
+was saved by the SVC instruction on entry to the operating system.  We
+can't rely on the arguments stiull being in r0, r1, etc., because an
+interrupt may have intervened and trashed these registers. */
 
 #define arg(i, t) ((t) psp[R0_SAVE+(i)])
 
@@ -525,7 +641,7 @@ unsigned *system_call(unsigned *psp) {
         break;
 
     case SYS_RECEIVE:
-        mini_receive(arg(0, int), arg(1, message *));
+        mini_receive(arg(0, int), arg(1, message *), arg(2, int));
         break;
 
     case SYS_SENDREC:
@@ -542,6 +658,10 @@ unsigned *system_call(unsigned *psp) {
            stack space is taken from the system stack rather than the
            stack of the current process. */
         microbian_dump();
+        break;
+
+    case SYS_TICK:
+        mini_tick(arg(0, int));
         break;
 
     default:
@@ -563,12 +683,12 @@ unsigned *cxt_switch(unsigned *psp) {
 
 /* SYSTEM CALL STUBS */
 
-/* Each function defined here leaves its arguments in r0, r1, etc., and
-   executes an svc instruction with operand equal to the system call
-   number.  After state has been saved, system_call() is invoked and
-   retrieves the call number and arguments from the exception frame.
-   Calls to these functions must not be inlined, or the arguments will
-   not be found in the right places. */
+/* Each function defined here leaves its arguments in r0, r1, etc.,
+and executes an svc instruction with operand equal to the system call
+number.  After state has been saved, system_call() is invoked and
+retrieves the call number and arguments from the exception frame.
+Calls to these functions must not be inlined, or the arguments will
+not be found in the right places. */
 
 #define NOINLINE __attribute((noinline))
 
@@ -580,8 +700,12 @@ void NOINLINE send(int dest, int type, message *msg) {
     syscall(SYS_SEND);
 }
 
-void NOINLINE receive(int type, message *msg) {
+void NOINLINE receive_t(int type, message *msg, int timeout) {
     syscall(SYS_RECEIVE);
+}
+
+void receive(int type, message *msg) {
+    receive_t(type, msg, -1);
 }
 
 void NOINLINE sendrec(int dest, int type, message *msg) {
@@ -596,11 +720,15 @@ void NOINLINE dump(void) {
     syscall(SYS_DUMP);
 }
 
+void NOINLINE tick(int ms) {
+    syscall(SYS_TICK);
+}
+
 
 /* DEBUG PRINTING */
 
-/* The routines here work by disabling interrupts and then polling: they
-   should be used only for debugging. */
+/* The routines here work by reconfiguring the UART, disabling
+interrupts and polling: they should be used only for debugging. */
 
 /* delay_usec -- delay loop */
 static void delay_usec(int usec) {

@@ -3,18 +3,18 @@
 
 @@@ Hardware multiplexing for the ARM Cortex-M4 (no floats)
 
-        .syntax unified
-        .text
+    .syntax unified
+    .text
 
 @@@ set_stack -- enter process mode
-        .global set_stack
-        .thumb_func
+    .global set_stack
+    .thumb_func
 set_stack:
-        msr psp, r0             @ Set up the stack
-        movs r0, #2             @ Use psp for stack pointer
-        msr control, r0
-        isb                     @ Drain the pipeline
-        bx lr
+    msr psp, r0                 @ Set up the stack
+    movs r0, #2                 @ Use psp for stack pointer
+    msr control, r0
+    isb                         @ Drain the pipeline
+    bx lr
         
 @@@ Stack layout for interrupt frames (17 words, 68 bytes)
 @@@ --------------------------------------
@@ -43,67 +43,66 @@ set_stack:
 @@@ frame layout.
 
 @@@ isave -- save context for system call
-        .macro isave
-        mrs r0, psp             @ Get thread stack pointer
-        mov r3, lr              @ Preserve magic value 0xfffffffd
-        stmfd r0!, {r3-r11}     @ Save registers
-        .endm                   @ Return new thread sp
+    .macro isave
+    mrs r0, psp                 @ Get thread stack pointer
+    mov r3, lr                  @ Preserve magic value 0xfffffffd
+    stmfd r0!, {r3-r11}         @ Save registers
+    .endm                       @ Return new thread sp
 
 @@@ irestore -- restore context after system call
-        .macro irestore         @ Expect process sp in r0
-        ldmfd r0!, {r3-r11}     @ Restore registers
-        msr psp, r0             @ Set stack pointer for thread
-        bx r3
-        .endm
+    .macro irestore             @ Expect process sp in r0
+    ldmfd r0!, {r3-r11}         @ Restore registers
+    msr psp, r0                 @ Set stack pointer for thread
+    bx r3
+    .endm
 
 @@@ svc_handler -- handler for SVC interrupt (system call)
-        .global svc_handler
-        .thumb_func
+    .global svc_handler
+    .thumb_func
 svc_handler:
-        isave                   @ Complete saving of state
-        @@ Argument in r0 is sp of old process
-        bl system_call          @ Perform system call
-        @@ Result in r0 is sp of new process
-        irestore                @ Restore manually saved state
+    isave                       @ Complete saving of state
+    @@ Argument in r0 is sp of old process
+    bl system_call              @ Perform system call
+    @@ Result in r0 is sp of new process
+    irestore                    @ Restore manually saved state
 
 @@@ pendsv_handler -- handler for PendSV interupt (context switch)
-        .global pendsv_handler
-        .thumb_func
+    .global pendsv_handler
+    .thumb_func
 pendsv_handler:
-        isave                   @ Complete saving of process state
-        bl cxt_switch           @ Choose a new process
-        irestore                @ Restore state for that process
-
-        .pool
+    isave                       @ Complete saving of process state
+    bl cxt_switch               @ Choose a new process
+    irestore                    @ Restore state for that process
+    .pool
 
 @@@ lock -- disable interrupts
-        .global lock
-        .thumb_func
+    .global lock
+    .thumb_func
 lock:                           
-        mrs r0, primask         @ Save current state for restore
-        ldr r1, =prev_mask
-        str r0, [r1]
-        cpsid i
-        bx lr
+    mrs r0, primask             @ Save current state for restore
+    ldr r1, =prev_mask
+    str r0, [r1]
+    cpsid i                     @ Disable interrupts
+    bx lr
 
 @@@ unlock -- enable interrupts
-        .global unlock
-        .thumb_func
+    .global unlock
+    .thumb_func
 unlock:
-        cpsie i
-        bx lr
+    cpsie i                     @ Enable interrupts
+    bx lr
 
 @@@ restore -- restore previous interrupt setting (used by kprintf)
-        .global restore
-        .thumb_func
+    .global restore
+    .thumb_func
 restore:
-        ldr r1, =prev_mask      @ Get previously saved state
-        ldr r0, [r1]
-        msr primask, r0         @ Restore it
-        bx lr
+    ldr r1, =prev_mask          @ Get previously saved state
+    ldr r0, [r1]
+    msr primask, r0             @ Restore it
+    bx lr
         
-        .bss
-        .align 2
+    .bss
+    .align 2
 prev_mask:
-        .space 4                @ Previous interrupt setting
+    .space 4                    @ Previous interrupt setting
 

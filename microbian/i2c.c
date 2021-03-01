@@ -5,12 +5,21 @@
 #include "hardware.h"
 #include <stddef.h>
 
+/* On the V1, there is only one I2C interface, but on the V2 there are
+separate interfaces for internal and external devices.  A client
+program should call i2c_init passing I2C_INTERNAL or I2C_EXTERNAL (or
+once for each) according to its needs.  On the V1 board, these two
+constants are equal, and we'll make sure that only one driver process
+is started. */
+
+static int I2C_TASK[N_I2CS];
+
 /* i2c_pins -- pin assignments for I2C interfaces */
 static struct {
-    unsigned scl;
-    unsigned sda;
-    int irq;
-} i2c_pins[] = {
+    unsigned scl;               /* I2C clock pin */
+    unsigned sda;               /* I2C data pin */
+    int irq;                    /* Interrupt number */
+} i2c_pins[N_I2CS] = {
 #ifdef UBIT_V1
     { I2C_SCL, I2C_SDA, I2C_IRQ },
 #endif
@@ -171,11 +180,10 @@ static void i2c_task(int chan) {
     }
 }
 
-static int I2C_TASK[2];
-
 /* i2c_init -- start I2C driver process */
 void i2c_init(int chan) {
-    I2C_TASK[chan] = start("I2C", i2c_task, chan, 256);
+    if (I2C_TASK[chan] == 0)
+        I2C_TASK[chan] = start("I2C", i2c_task, chan, 256);
 }
 
 /* i2c_xfer -- i2c transaction with command write then data read or write */

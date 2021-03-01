@@ -1,6 +1,9 @@
 // display.c
 // Copyright (c) 2020 J. M. Spivey
 
+/* A simple driver for the micro:bit LEDs with the same interface on
+V1 and V2. */
+
 #include "microbian.h"
 #include "hardware.h"
 #include <string.h>
@@ -10,6 +13,7 @@ because it has the row bits set.  Copying blank and then setting
 (actually, clearing) column bits for each row results in an image 
 that displays properly. */
 
+/* blank -- empty image */
 const image blank =
     IMAGE(0,0,0,0,0,
           0,0,0,0,0,
@@ -17,6 +21,7 @@ const image blank =
           0,0,0,0,0,
           0,0,0,0,0);
 
+/* image_clear -- set image to blank */
 void image_clear(image img) {
     memcpy(img, blank, sizeof(image));
 }
@@ -24,6 +29,7 @@ void image_clear(image img) {
 #ifdef UBIT_V1
 #define PIX(i, j) (((i-1)<<5) | (j+3))
 
+/* img_map -- map of logical row and column bit for each physical pixel */
 static unsigned img_map[5][5] = {
     { PIX(3,3), PIX(2,7), PIX(3,1), PIX(2,6), PIX(3,2) },
     { PIX(1,8), PIX(1,7), PIX(1,6), PIX(1,5), PIX(1,4) },
@@ -32,36 +38,46 @@ static unsigned img_map[5][5] = {
     { PIX(1,1), PIX(2,4), PIX(1,2), PIX(2,5), PIX(1,3) }
 };
 
+/* map_pixel -- find logical row and column for a pixel */
 static unsigned map_pixel(int x, int y) {
     return img_map[y][x];
 }
 #endif
 
 #ifdef UBIT_V2
-static const unsigned col[] = {
+/* img_col -- map of column bit for each physical column */
+static const unsigned img_col[] = {
     COL1, COL2, COL3, COL4, COL5
 };
 
+/* map_pixel -- find logical row and column for a pixel */
 static unsigned map_pixel(int x, int y) {
-    return ((4-y) << 6) | col[x];
+    return ((4-y) << 6) | img_col[x];
 }
 #endif
 
+/* image_set -- switch on a single pixel in an image */
 void image_set(int x, int y, image img) {
     if (x < 0 || x >= 5 || y < 0 || y >= 5) return;
     unsigned p = map_pixel(x, y);
     CLR_BIT(img[p >> 5], p & 0x1f);
 }
 
+/* curimg is a shared variable between the client and the display
+driver task, but it is read-only in the device driver.  Partial
+updates don't elly matter, because they will cause only a momentary
+glitch in the display when it is changing anyway. */
 
-static image curimg; // A shared variable!
+/* curimg -- shared variable for currently displayed image */
+static image curimg;
 
+/* display_task -- device driver for LED display */
 void display_task(int dummy) {
     int n = 0;
 
 #ifdef UBIT_V1
     GPIO_DIRSET = LED_MASK;
-    timer_pulse(3);
+    timer_pulse(5);             /* 5ms x 3 = 15ms updates */
 #endif
     
 #ifdef UBIT_V2
@@ -75,14 +91,14 @@ void display_task(int dummy) {
     gpio_drive(ROW4, GPIO_DRIVE_S0H1);
     gpio_drive(ROW5, GPIO_DRIVE_S0H1);
 
-    timer_pulse(5);
+    timer_pulse(3);             /* 3ms * 5 = 15ms updates */
 #endif
 
     image_clear(curimg);
     priority(P_HIGH);
 
     while (1) {
-        // Carefully leave other bits unchanged
+        // Carefully change LED bits and leave other bits alone
 #ifdef UBIT_V1
         GPIO_OUTCLR = 0xfff0;
         GPIO_OUTSET = curimg[n++];
@@ -103,10 +119,12 @@ void display_task(int dummy) {
     }
 }
 
+/* display_show -- set display from image */
 void display_show(const image img) {
     memcpy(curimg, img, sizeof(image));
 }
 
+/* display_init -- start display driver task */
 void display_init(void) {
     start("Display", display_task, 0, STACK);
 }

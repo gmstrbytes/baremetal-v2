@@ -44,4 +44,4 @@ clean:
 
 ###
 
-chaos.o order.o order2.o: microbian.h
+chaos.o order.o: microbian.h

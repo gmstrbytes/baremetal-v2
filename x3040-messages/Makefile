@@ -1,7 +1,7 @@
 # x3040-messages/Makefile
 # Copyright (c) 2020 J. M. Spivey
 
-all: pcount
+all: pcount.hex
 
 CC = arm-none-eabi-gcc
 CPU = -mcpu=cortex-m4 -mthumb

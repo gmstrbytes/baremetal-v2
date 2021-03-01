@@ -59,13 +59,9 @@ unsigned pix[NPIX];
 void init(void) {
     int u = 0;
 
-#ifdef UBIT_V2
-    // Enable the instruction cache
-    SET_BIT(NVMC_ICACHECONF, NVMC_ICACHECONF_CACHEEN);
-#endif
-
     // Set up pin NEO for output
     gpio_dir(NEO, 1);
+    gpio_out(NEO, 0);
 
     // Initialise to all pixels off
     neoframe(NEO, pix, NPIX);

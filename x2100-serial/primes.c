@@ -44,12 +44,14 @@ void print_buf(char *buf, int n) {
     }
 }
 
+/* modulo -- (very slow) remainder operation */
 int modulo(int a, int b) {
     int r = a;
     while (r >= b) r -= b;
     return r;
 }
 
+/* prime -- test if an integer is prime */
 int prime(int n) {
     for (int k = 2; k * k <= n; k++) {
         if (modulo(n, k) == 0)
@@ -59,27 +61,26 @@ int prime(int n) {
     return 1;
 }
 
+/* start_timer -- light an LED and start a timer */
 void start_timer(void) {
-    // Light an LED
     led_dot();
 
-    // Start a timer
     TIMER0_MODE = TIMER_MODE_Timer;
     TIMER0_BITMODE = TIMER_BITMODE_32Bit;
     TIMER0_PRESCALER = 4; // Count at 1MHz
     TIMER0_START = 1;
 }
 
+/* stop_timer -- turn off LED and print timer result */
 void stop_timer(void) {
-    // Turn LED off
     led_off();
 
-    // Fetch timer result
     TIMER0_CAPTURE[0] = 1;
     unsigned time1 = TIMER0_CC[0];
     printf("%d millisec\n", (time1+500)/1000);
 }
 
+/* init -- main program */
 void init(void) {
     int n = 2, count = 0;
 
