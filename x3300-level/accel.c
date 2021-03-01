@@ -39,8 +39,6 @@ static void acc2_read(int *x, int *y, int *z) {
 
 /* accel_start -- initialise accelerometer */
 void accel_start(void) {
-    byte buf;
-
     /* Find chip and set to 50Hz, 8 bit, Active */
     if (i2c_probe(I2C_INTERNAL, ACC1) == OK) {
         i2c_write_reg(I2C_INTERNAL, ACC1, ACC1_CTRL_REG1, 0x23);

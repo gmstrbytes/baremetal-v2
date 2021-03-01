@@ -27,12 +27,12 @@ static const unsigned ahead[] =
           0,1,1,1,0);
 
 void sender_task(int dummy) {
-    GPIO_PINCNF[BUTTON_A] = 0;
-    GPIO_PINCNF[BUTTON_B] = 0;
+    gpio_connect(BUTTON_A);
+    gpio_connect(BUTTON_B);
 
     while (1) {
-        int a = GET_BIT(GPIO_IN, BUTTON_A);
-        int b = GET_BIT(GPIO_IN, BUTTON_B);
+        unsigned a = gpio_in(BUTTON_A);
+        unsigned b = gpio_in(BUTTON_B);
 
         if (a == 0 && b == 0) {
             display_show(ahead);

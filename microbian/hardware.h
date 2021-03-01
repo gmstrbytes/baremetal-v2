@@ -927,7 +927,7 @@ inline void gpio_out(unsigned pin, unsigned value) {
 
 /* gpio_in -- get GPIO input bit */
 inline unsigned gpio_in(unsigned pin) {
-    return (GPIO[PORT(pin)].G_IN & BIT(PIN(pin))) != 0;
+    return GET_BIT(GPIO[PORT(pin)].G_IN, PIN(pin));
 }
 
 

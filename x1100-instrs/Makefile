@@ -38,7 +38,7 @@ vpath libgcc.a $(GCCLIB)/thumb/v6-m \
 		$(GCCLIB)/armv6-m $(GCCLIB)/thumb/v6-m/nofp
 
 clean:
-	rm -f *.hex *.elf *.map *.o
+	rm -f *.hex *.elf *.bin *.map *.o
 
 # Don't delete intermediate files
 .SECONDARY:

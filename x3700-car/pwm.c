@@ -22,7 +22,7 @@ static int PWM;                 // Process ID
 
 void pwm_setup(void) {
     // Pads 1 and 2 are outputs
-    GPIO_DIRSET = BIT(PAD1) | BIT(PAD2);
+    gpio_dir(PAD1, 1); gpio_dir(PAD2, 1);
 
     // GPIOTE channels 0 and 1 toggle the two pins
     GPIOTE_CONFIG[0] =

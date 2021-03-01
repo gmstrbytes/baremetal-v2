@@ -25,7 +25,6 @@ static volatile char txbuf[NBUF]; // The buffer
 
 /* buf_put -- add character to buffer */
 void buf_put(char ch) {
-    assert(bufcnt < NBUF);
     txbuf[bufin] = ch;
     bufcnt++;
     bufin = (bufin+1) % NBUF;
@@ -33,7 +32,6 @@ void buf_put(char ch) {
 
 /* buf_get -- fetch character from buffer */
 char buf_get(void) {
-    assert(bufcnt > 0);
     char ch = txbuf[bufout];
     bufcnt--;
     bufout = (bufout+1) % NBUF;

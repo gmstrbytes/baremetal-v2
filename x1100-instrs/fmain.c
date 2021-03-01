@@ -166,7 +166,7 @@ void init(void) {
 
     serial_init();
     printf("\nHello micro:world!\n\n");
-
+      
 #ifdef UBIT
     led_init();
 

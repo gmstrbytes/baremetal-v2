@@ -97,8 +97,8 @@ void panic(char *fmt, ...);
 void badmesg(int type);
 
 #define assert(p) \
-    do { if (!(p)) panic("File %s, line %d: assertion %s failed", \
-                         __FILE__, __LINE__, #p); } while (0)
+    if (!(p)) panic("File %s, line %d: assertion %s failed", \
+                    __FILE__, __LINE__, #p)
 
 /* spin -- flash the seven stars of death forever */
 void spin(void);
