@@ -45,6 +45,8 @@ clean:
 
 ###
 
+total.elf: lib.o
+
 total.o: lib.h hardware.h
 startup.o: hardware.h
 lib.o: lib.h

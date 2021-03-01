@@ -24,11 +24,11 @@ const unsigned heart[] = {
 
 /* small -- GPIO values for small heart */
 const unsigned small[] = {
-    d0200800, 00000020,
-    d0400000, 00000000,
-    50008000, 00000000,
-    51000800, 00000020,
-    d0080800, 00000020
+    0xd0200800, 0x00000020,
+    0xd0400000, 0x00000000,
+    0x50008000, 0x00000000,
+    0x51000800, 0x00000020,
+    0xd0080800, 0x00000020
 }
 
 #define JIFFY 3000              // Delay in microsecs
