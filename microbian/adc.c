@@ -100,17 +100,18 @@ static const int chantab[] = {
 };
 
 int adc_reading(int pin) {
-    int i, chan;
+    int i, chan = -1;
     message m;
 
-    for (i = 0;; i += 2) {
-        if (chantab[i] == 0) panic("Can't use pin %d for ADC", pin);
-
+    for (i = 0; chantab[i] != 0; i += 2) {
         if (chantab[i] == pin) {
             chan = chantab[i+1];
             break;
         }
     }
+
+    if (chan < 0)
+        panic("Can't use pin %d for ADC", pin);
 
     m.m_i1 = chan;
     sendrec(ADC, REQUEST, &m);
