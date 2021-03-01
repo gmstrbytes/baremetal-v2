@@ -17,7 +17,7 @@ OBJCOPY = arm-none-eabi-objcopy
 %.o: %.s
 	$(AS) $(CPU) $< -o $@
 
-%.elf: %.o startup.o
+%.elf: %.o lib.o startup.o
 	$(CC) $(CPU) $(CFLAGS) -T nRF52833.ld \
 		$^ -nostdlib -lgcc -o $@ -Wl,-Map,$*.map
 	$(SIZE) $@
@@ -44,8 +44,6 @@ clean:
 .SECONDARY:
 
 ###
-
-total.elf: lib.o
 
 total.o: lib.h hardware.h
 startup.o: hardware.h
