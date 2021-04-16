@@ -73,36 +73,3 @@ pendsv_handler:
     isave                       @ Complete saving of process state
     bl cxt_switch               @ Choose a new process
     irestore                    @ Restore state for that process
-    .pool
-
-@@@ lock -- disable interrupts
-    .global lock
-    .thumb_func
-lock:                           
-    mrs r0, primask             @ Save current state for restore
-    ldr r1, =prev_mask
-    str r0, [r1]
-    cpsid i                     @ Disable interrupts
-    bx lr
-
-@@@ unlock -- enable interrupts
-    .global unlock
-    .thumb_func
-unlock:
-    cpsie i                     @ Enable interrupts
-    bx lr
-
-@@@ restore -- restore previous interrupt setting (used by kprintf)
-    .global restore
-    .thumb_func
-restore:
-    ldr r1, =prev_mask          @ Get previously saved state
-    ldr r0, [r1]
-    msr primask, r0             @ Restore it
-    bx lr
-        
-    .bss
-    .align 2
-prev_mask:
-    .space 4                    @ Previous interrupt setting
-

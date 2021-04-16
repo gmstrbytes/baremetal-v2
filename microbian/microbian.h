@@ -34,25 +34,13 @@ typedef unsigned char byte;
 typedef struct {                // 16 bytes
     unsigned short m_type;      // Type of message
     unsigned short m_sender;    // PID of sender
-    union {                     // Three words of data, each
-        int m_i;                // ... an integer
-        void *m_p;              // ... or some kind of pointer
-        struct {                // ... or four bytes
-            byte m_bw, m_bx, m_by, m_bz;
-        } m_b;
-    } m_x1, m_x2, m_x3;
+    union {                     // An integer, a pointer, or four bytes
+        int m_i1; void *m_p1;
+        struct { byte m_b1, m_b2, m_b3, m_b4; };
+    };
+    union { int m_i2; void *m_p2; }; // Another integer or pointer
+    union { int m_i3; void *m_p3; }; // A third integer or pointer
 } message;
-
-#define m_i1 m_x1.m_i
-#define m_i2 m_x2.m_i
-#define m_i3 m_x3.m_i
-#define m_p1 m_x1.m_p
-#define m_p2 m_x2.m_p
-#define m_p3 m_x3.m_p
-#define m_b1 m_x1.m_b.m_bw
-#define m_b2 m_x1.m_b.m_bx
-#define m_b3 m_x1.m_b.m_by
-#define m_b4 m_x1.m_b.m_bz
 
 
 /* microbian.c */
@@ -62,47 +50,51 @@ int start(char *name, void (*body)(int), int arg, int stksize);
 
 #define STACK 1024              // Default stack size
 
-/* System calls */
+/* SYSTEM CALLS */
+
+/* yield -- voluntarily allow other processes to run */
 void yield(void);
+
+/* send -- send a message */
 void send(int dst, int type, message *msg);
+
+/* receive -- receive a message */
 void receive(int type, message *msg);
-void receive_t(int type, message *msg, int timeout);
+
+/* sendrec -- send followed by receive */
 void sendrec(int dst, int type, message *msg);
+
+/* connect -- register to receive interrupt messages */
 void connect(int irq);
+
+/* priority -- set process priority */
 void priority(int p);
+
+/* exit -- terminate current process */
 void exit(void);
+
+/* dump -- print table of process states (called from serial) */
 void dump(void);
-void tick(int ms);
 
-/* interrupt -- send INTERRUPT message from handler */
+/* interrupt -- send interrupt message from handler */
 void interrupt(int pid);
-
-/* lock -- disable all interrupts */
-void lock(void);
-
-/* unlock -- enable interrupts again */
-void unlock(void);
-
-/* restore -- restore previous interrupt setting (used by kprintf) */
-void restore(void);
-
 
 /* kprintf -- print message on console without using serial task */
 void kprintf(char *fmt, ...);
 
-/* panic -- crash with message [and show seven stars] */
+/* panic -- crash with message and show seven stars */
 void panic(char *fmt, ...);
 
 /* badmesg -- panic after receiving unexpected message */
 void badmesg(int type);
 
+/* assert -- check assertion and panic if false */
 #define assert(p) \
     if (!(p)) panic("File %s, line %d: assertion %s failed", \
                     __FILE__, __LINE__, #p)
 
 /* spin -- flash the seven stars of death forever */
 void spin(void);
-
 
 /* serial.c */
 void serial_putc(char ch);
@@ -128,8 +120,7 @@ int i2c_xfer(int chan, int kind, int addr,
 void i2c_init(int chan);
 
 /* radio.c */
-#define RADIO_PACKET 32
-
+#define RADIO_PACKET 128
 void radio_group(int group);
 void radio_send(void *buf, int n);
 int radio_receive(void *buf);
@@ -138,12 +129,10 @@ void radio_init(void);
 /* display.c */
 void display_show(const unsigned *img);
 void display_init(void);
-
 extern const unsigned blank[];
 void image_clear(unsigned *img);
 void image_set(int x, int y, unsigned *img);
 
 /* adc.c */
 int adc_reading(int pin);
-
 void adc_init(void);

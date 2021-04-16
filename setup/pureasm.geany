@@ -70,6 +70,7 @@ ignored_dirs_patterns=.*;CVS;
 ignored_file_patterns=*.o;*.obj;*.a;*.lib;*.so;*.dll;*.lo;*.la;*.class;*.jar;*.pyc;*.mo;*.gmo;*.elf;*.hex;
 generate_tag_prefs=0
 external_dirs=
+show_empty_dirs=true
 
 [files]
 current_page=0

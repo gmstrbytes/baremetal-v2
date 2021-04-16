@@ -8,7 +8,6 @@ static int TIMER_TASK;
 
 #ifdef UBIT_V2
 #define TICK 1                  // Interval between updates (ms)
-// #define USE_SYSTICK 1
 #endif
 
 #ifndef TICK
@@ -28,6 +27,11 @@ static struct {
     unsigned period; /* Interval between messages, or 0 for one-shot */
     unsigned next;   /* Next time to send a message */
 } timer[MAX_TIMERS];
+
+/* check_timers is called by the timer task and sends messages
+   directly to clients.  We assume that each client is waiting to
+   receive a PING message: otherwise the progress of the entire system
+   will be held up, possibly leading to deadlock. */
 
 /* check_timers -- send any messages that are due */
 static void check_timers(void) {
@@ -70,17 +74,6 @@ static void create(int client, int delay, int repeat) {
     timer[i].period = repeat;
 }
 
-#ifdef USE_SYSTICK
-
-/* systick_handler -- interrupt handler */
-void systick_handler(void) {
-    millis += TICK;
-    (void) SYST_CSR;            // Read counter flaf to clear it
-    interrupt(TIMER_TASK);
-}
-
-#else
-
 /* timer1_handler -- interrupt handler */
 void timer1_handler(void) {
     // Update the time here so it is accessible to timer_micros
@@ -91,20 +84,11 @@ void timer1_handler(void) {
     }
 }
 
-#endif
-
 static void timer_task(int n) {
     message m;
 
-#ifdef USE_SYSTICK
-    SYST_RVR = SYSTICK_CLOCK / 1000;
-    SYST_CVR = 0;
-    SYST_CSR = FIELD(SYST_CSR_CLKSOURCE, SYST_CLKSOURCE_Internal)
-        | BIT(SYST_CSR_TICKINT) | BIT(SYST_CSR_ENABLE);
-    enable_irq(SYSTICK_IRQ);
-#else
     /* We use Timer 1 because its 16-bit mode is adequate for a clock
-       with up to 1us resolution and 5ms period, leaving the 32-bit
+       with up to 1us resolution and 1ms period, leaving the 32-bit
        Timer 0 for other purposes. */
     TIMER1_STOP = 1;
     TIMER1_MODE = TIMER_MODE_Timer;
@@ -116,14 +100,12 @@ static void timer_task(int n) {
     TIMER1_INTENSET = BIT(TIMER_INT_COMPARE0);
     TIMER1_START = 1;
     enable_irq(TIMER1_IRQ);
-#endif
 
     while (1) {
         receive(ANY, &m);
 
         switch (m.m_type) {
         case INTERRUPT:
-            tick(TICK);
             check_timers();
             break;
 

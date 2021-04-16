@@ -18,10 +18,10 @@ static int RADIO_TASK;
 /* We use a packet format that agrees with the standard micro:bit
 runtime.  That means prefixing the packet with three bytes (version,
 group, protocol) and counting these three in the length: the STATLEN
-feature of the radio does not do this for us. */
+feature of the radio is not used. */
 
-static struct radio_frame {
-    byte length;                /* Packet length, excluding 3-byte prefix */
+static struct {
+    byte length;                /* Packet length, including 3-byte prefix */
     byte version;               /* Version: always 1 */
     byte group;                 /* Radio group */
     byte protocol;              /* Protocol identifier: always 1 */
@@ -33,44 +33,27 @@ static volatile int group = 0;
 
 /* init_radio -- initialise radio hardware */
 static void init_radio() {
-    RADIO_TXPOWER = 0;          /* Default transmit power */
-    RADIO_FREQUENCY = FREQ;
-    RADIO_MODE = RADIO_MODE_NRF_1Mbit;
-    RADIO_BASE0 = 0x75626974;   /* That spells 'ubit' */
-    RADIO_TXADDRESS = 0;
-    RADIO_RXADDRESSES = BIT(0);
+    RADIO_TXPOWER = 0;          // Default transmit power
+    RADIO_FREQUENCY = FREQ;     // Transmission frequency
+    RADIO_MODE = RADIO_MODE_NRF_1Mbit; // 1Mbit/sec data rate
+    RADIO_BASE0 = 0x75626974;   // That spells 'ubit'
+    RADIO_TXADDRESS = 0;        // Use address 0 for transmit
+    RADIO_RXADDRESSES = BIT(0); //   and also (just one) for receive.
 
     // Basic configuration
-    RADIO_PCNF0 = FIELD(RADIO_PCNF0_LFLEN, 8);
-    RADIO_PCNF1 = BIT(RADIO_PCNF1_WHITEEN)
-        | FIELD(RADIO_PCNF1_BALEN, 4)
+    RADIO_PCNF0 = FIELD(RADIO_PCNF0_LFLEN, 8); // One 8-bit length field
+    RADIO_PCNF1 = BIT(RADIO_PCNF1_WHITEEN) // Whitening enabled
+        | FIELD(RADIO_PCNF1_BALEN, 4) // Base address is 4 bytes
         | FIELD(RADIO_PCNF1_MAXLEN, RADIO_PACKET+3)
+                                // Max packet length allowing for 3 byte prefix
         | FIELD(RADIO_PCNF1_ENDIAN, RADIO_ENDIAN_Little);
+                                // Fields transmitted LSB first
 
-    // CRC settings -- matches micro_bit runtime
-    RADIO_CRCCNF = 2;
+    // CRC and whitening settings -- match micro_bit runtime
+    RADIO_CRCCNF = 2;           // CRC is 2 bytes
     RADIO_CRCINIT = 0xffff;
     RADIO_CRCPOLY = 0x11021;
-
-    // Whitening -- matches micro_bit runtime
     RADIO_DATAWHITEIV = 0x18;
-
-    // Trim override?  Probably not needed on micro:bit
-    if ((FICR_OVERRIDEEN & BIT(FICR_OVERRIDEEN_NRF)) == 0) {
-        kprintf("Setting radio override values\r\n");
-        RADIO_OVERRIDE[0] = FICR_NRF_1MBIT[0];
-        RADIO_OVERRIDE[1] = FICR_NRF_1MBIT[1];
-        RADIO_OVERRIDE[2] = FICR_NRF_1MBIT[2];
-        RADIO_OVERRIDE[3] = FICR_NRF_1MBIT[3];
-        RADIO_OVERRIDE[4] = FICR_NRF_1MBIT[4];
-    }
-
-    // Configure interrupts
-    RADIO_INTENSET =
-        BIT(RADIO_INT_READY) | BIT(RADIO_INT_END) | BIT(RADIO_INT_DISABLED);
-
-    // Set packet buffer
-    RADIO_PACKETPTR = (unsigned) &packet_buffer;    
 }
 
 /* radio_await -- wait for expected interrupt */
@@ -85,13 +68,21 @@ static void radio_await(unsigned volatile *event) {
 /* radio_task -- device driver for radio */
 static void radio_task(int dummy) {
     int mode = DISABLED;
-    int listener = 0, n;
+    int listener = 0;
+    int n;
     void *buffer = NULL;
     message m;
 
     init_radio();
+
+    // Configure interrupts
+    RADIO_INTENSET =
+        BIT(RADIO_INT_READY) | BIT(RADIO_INT_END) | BIT(RADIO_INT_DISABLED);
     connect(RADIO_IRQ);
     enable_irq(RADIO_IRQ);
+
+    // Set packet buffer
+    RADIO_PACKETPTR = (unsigned) &packet_buffer;
 
     while (1) {
         receive(ANY, &m);

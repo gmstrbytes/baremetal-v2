@@ -1,15 +1,40 @@
 # houdini.py
-# Copyright (c) 2020 J. M. Spivey
+# Copyright (c) 2021 J. M. Spivey
 
-# My first Python program.  Don't look.  Really don't! -- Mike
-
-# Python has a config file parsing library, but it just won't do for
-# this task because of minor syntax variations.
+# Manipulate gnome-style configuration files.  Similar to crudini, but
+# obeying the different conventions about spaces that are used in
+# Gnome.  Python has a config file parsing library used by crudini,
+# but it just won't do for this task because of minor syntax
+# variations.
+#
+# Invoking
+#
+#     houdini set file.conf section option value
+#
+# sets an option in file.conf, creating it if necessary.  All comments
+# in an existing file are lost, apart from a preamble that is preserved.
+#
+# Invoking
+#
+#     houdini get file.conf section option
+#
+# prints an option setting to standard output, or prints nothing if
+# the file doesn't exist or the option is not set.
+#
+# Invoking
+#
+#     houdine del file.conf section option
+#
+# deletes an option.  Deleting a non-existent option is allowed.
+#
+# Key-value pairs before the first named section are treated as
+# belonging to a section named with the empty string.
 
 import sys
 import re
 
-# A global database of config file entries (why not?)
+# A global database of config file entries.  If sec exists, then dbase[sec]
+# is itself a dictionary d with d[key] = value.
 dbase = dict()
 # The usual dict objects preserve the order keys were added, which is
 # helpful for us.
@@ -20,16 +45,11 @@ def setopt(section, key, value):
     if not (section in dbase): dbase[section] = dict()
     dbase[section][key] = value
 
-def save(fp):
-    """Save the database on a file."""
+def delopt(section, key):
+    """Delete an option."""
     global dbase
-    vierge = True
-    for s, d in dbase.items():
-        if not vierge: fp.write("\n")
-        vierge = False
-        fp.write(f"[{s}]\n")
-        for k, v in d.items():
-            fp.write(f"{k}={v}\n")
+    if section in dbase and key in dbase[section]:
+        del dbase[section][key]
 
 def rematch(re, line):
     """Match a regexp and save the result."""
@@ -43,43 +63,62 @@ def regroup(n):
     return mdata.group(n)
 
 def parse(fp):
-    """Parse a config file and add its content to the database"""
+    """Parse a config file and add its content to the database."""
+    global preamble
 
     # These are rather strict, but adequate for the task
     sechdr = re.compile(r"^\[([^]]+)\]$")
     kvline = re.compile(r"^([^=]+)=(.*)$")
     comment = re.compile(r"^[ \t]*(#.*)?$")
     
-    cursec = None
+    cursec = ""
+    preamble = []
+    started = False
 
     for line in fp:
         if rematch(sechdr, line):
-            # A [section] line.  No support for keys before the first section.
+            # A [section] line.
+            started = True
             cursec = regroup(1)
         elif rematch(kvline, line):
             # A key=value line.  No spaces around key, but
             # spaces ARE significant before and after value
-            key = regroup(1)
-            value = regroup(2)
-            if cursec == None:
-                print("Anon section not allowed"); exit(1)
+            started = True
+            key, value = regroup(1), regroup(2)
             setopt(cursec, key, value)
         elif rematch(comment, line):
-            # A blank or comment line.  Comments are lost, alas.
-            pass
+            # A blank or comment line.  Preserve comments at top of file.
+            if not started: preamble.append(line)
         else:
             print("Syntax error:", line, file=sys.stderr)
             exit(1)
 
+def save(fp):
+    """Save the database on a file."""
+    global dbase, preamble
+    started = False
+    for line in preamble: fp.write(line)
+
+    if "" in dbase and dbase[""]: 
+        started = True
+        for k, v in dbase[""].items(): fp.write(f"{k}={v}\n")
+
+    for s, d in dbase.items():
+        if s == "" or not d: continue
+        if started: fp.write("\n")
+        started = True
+        fp.write(f"[{s}]\n")
+        for k, v in d.items(): fp.write(f"{k}={v}\n")
+
 args = sys.argv[1:]
 
 if not ((len(args) == 4 and args[0] == "get")
-        or (len(args) == 5 and args[0] == "set")):
+        or (len(args) == 5 and args[0] == "set")
+        or (len(args) == 4 and args[0] == "del")):
     print("Usage: houdini (get|set) file.conf section option [value]",
           file=sys.stderr); exit(1)
 
-cmd = args[0]; fname = args[1];
-section = args[2]; option = args[3]
+cmd, fname, section, option = args[0], args[1], args[2], args[3]
 if args[0] == "set": value = args[4]
 
 try:
@@ -98,3 +137,7 @@ if cmd == "set":
     setopt(section, option, value)
     with open(fname, 'w') as fp: save(fp)
 
+if cmd == "del":
+    # houdine del file.conf section option
+    delopt(section, option)
+    with open(fname, 'w') as fp: save(fp)

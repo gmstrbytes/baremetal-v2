@@ -49,36 +49,6 @@ static int i2c_wait(int chan, unsigned volatile *event) {
     return OK;
 }
 
-/* i2c_do_read -- read one or more bytes */
-static int i2c_do_read(int chan, char *buf, int n) {
-    int status = OK;
-
-    for (int i = 0; i < n; i++) {
-        if (i == n-1)
-            I2C[chan].I_SHORTS = BIT(I2C_BB_STOP);
-        else
-            I2C[chan].I_SHORTS = BIT(I2C_BB_SUSPEND);
-        
-        if (i == 0)
-            I2C[chan].I_STARTRX = 1;
-        else
-            I2C[chan].I_RESUME = 1;
-        
-        status = i2c_wait(chan, &I2C[chan].I_RXDREADY);
-        if (status != OK) return status;
-        buf[i] = I2C[chan].I_RXD;
-    }
-
-    i2c_wait(chan, &I2C[chan].I_STOPPED);
-    return OK;
-}          
-          
-/* i2c_start_write -- start write transaction */
-static void i2c_start_write(int chan) {
-    I2C[chan].I_SHORTS = 0;
-    I2C[chan].I_STARTTX = 1;
-}
-
 /* i2c_do_write -- send one or more bytes */
 static int i2c_do_write(int chan, char *buf, int n) {
     int status = OK;
@@ -133,20 +103,49 @@ static void i2c_task(int chan) {
             I2C[chan].I_ADDRESS = addr;
             status = OK;
              
-            // Write followed by read, with repeated start
             if (n1 > 0) {
-                i2c_start_write(chan);
+                // Write followed by read, with repeated start
+                I2C[chan].I_STARTTX = 1;
                 status = i2c_do_write(chan, buf1, n1);
             }
-            if (status == OK)
-                status = i2c_do_read(chan, buf2, n2);
+
+            /* The hardware reference manual is wrong in several ways,
+               but the following code (based on timing diagrams in the
+               reference manual) works reliably. */
+
+            if (status == OK) {
+                for (int i = 0; i < n2; i++) {
+                    /* On all but the last byte, use SUSPEND to send
+                       an ACK after receiving the byte.  Use STOP to
+                       send a NACK at the end. */
+                    if (i < n2-1)
+                        I2C[chan].I_SHORTS = BIT(I2C_BB_SUSPEND);
+                    else
+                        I2C[chan].I_SHORTS = BIT(I2C_BB_STOP);
+        
+                    /* Start the first byte with STARTTX, and the rest
+                       with RESUME following the SUSPEND. */
+                    if (i == 0)
+                        I2C[chan].I_STARTRX = 1;
+                    else
+                        I2C[chan].I_RESUME = 1;
+        
+                    status = i2c_wait(chan, &I2C[chan].I_RXDREADY);
+                    if (status != OK) break;
+                    buf2[i] = I2C[chan].I_RXD;
+                }
+            }
             
+            if (status == OK)
+                i2c_wait(chan, &I2C[chan].I_STOPPED);
+
             if (status != OK) {
                 i2c_stop(chan);
                 error = I2C[chan].I_ERRORSRC;
                 I2C[chan].I_ERRORSRC = I2C_ERRORSRC_All;
             }
 
+            I2C[chan].I_SHORTS = 0;
             m.m_i1 = status;
             m.m_i2 = error;
             send(client, REPLY, &m);
@@ -157,7 +156,7 @@ static void i2c_task(int chan) {
             status = OK;
 
             // A single write transaction
-            i2c_start_write(chan);
+            I2C[chan].I_STARTTX = 1;
             if (n1 > 0)
                 status = i2c_do_write(chan, buf1, n1);
             if (status == OK && n2 > 0)

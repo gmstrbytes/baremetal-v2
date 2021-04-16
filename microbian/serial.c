@@ -305,6 +305,10 @@ char serial_getc(void) {
 
 /* print_buf -- output routine for use by printf */
 void print_buf(char *buf, int n) {
+    /* Using sendrec() here avoids a potential priority inversion:
+       with separate send() and receive() calls, a lower-priority
+       client process can block a reply from the device driver. */
+
     message m;
     m.m_p1 = buf;
     m.m_i2 = n;
