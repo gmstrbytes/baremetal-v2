@@ -14,24 +14,24 @@ project() {
         $dir/setup/$type.geany >$dir/$proj/$name.geany
 }
 
-project 01 part2 echo.c echo.hex
-project 02 part1 func.s func.hex
-project 03 part1 max.s max.hex
-project 04 part1 mult.s mult.hex
-project 05 part1 fact.s fact.hex
-project 06 part1 bank.s bank.hex
-project 07 hack total.c total.hex
-project 08 part2 heart.c heart.hex
-project 09 pureasm blinky.s blinky.hex
-project 10 part2 primes.c primes.hex
-project 11 part2 primes2.c primes2.hex
-project 12 part2 bitbang.c bitbang.hex
-project 13 part2 rainbow.c rainbow.hex
-project 14 part3 valentine.c valentine.hex
-project 15 part3 pcount.c pcount.hex
-project 16 part3 chaos.c chaos.hex
-project 17 part3 myprimes.c myprimes.hex
-project 18 part3 level.c level.hex
-project 19 part3 buggy.c buggy.hex
-project 20 part3 remote.c remote.hex
-project 21 part3 car.c car.hex
+project x01-echo part2 echo.c echo
+project x02-instrs part1 func.s func
+project x03-branches part1 max.s max
+project x04-loops part1 mult.s mult
+project x05-subrs part1 fact.s fact
+project x06-arrays part1 bank.s bank
+project x07-hack hack total.c total
+project x08-heart part2 heart.c heart
+project x09-pureasm pureasm blinky.s blinky
+project x10-serial part2 primes.c primes
+project x11-interrupt part2 primes2.c primes2
+project x12-intrmech part2 bitbang.c bitbang
+project x13-neopixels part2 rainbow.c rainbow
+project x14-processes part3 valentine.c valentine
+project x15-messages part3 pcount.c pcount
+project x16-sync part3 chaos.c chaos
+project x17-driver part3 myprimes.c myprimes
+project x18-level part3 level.c level
+project x19-servos part3 buggy.c buggy
+project x20-radio part3 remote.c remote
+project x21-car part3 car.c car

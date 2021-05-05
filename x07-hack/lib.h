@@ -1,5 +1,5 @@
-// lib.h
-// Copyright (c) 2018 J. M. Spivey
+/* lib.h */
+/* Copyright (c) 2018 J. M. Spivey */
 
 #include <stdarg.h>
 

@@ -1,5 +1,5 @@
-// x3200-driver/myserial.c
-// Copyright (c) 2020 J. M. Spivey
+/* x3200-driver/myserial.c */
+/* Copyright (c) 2020 J. M. Spivey */
 
 #include "microbian.h"
 #include "hardware.h"
@@ -31,7 +31,8 @@ static int txidle = 1;          /* True if transmitter is idle */
    stop the UART from setting it again. */
 
 /* serial_interrupt -- handle serial interrupt */
-static void serial_interrupt(void) {
+static void serial_interrupt(void)
+{
     if (UART_TXDRDY) {
         txidle = 1;
         UART_TXDRDY = 0;
@@ -42,8 +43,9 @@ static void serial_interrupt(void) {
 }
 
 /* serial_starttx -- start transmitter if possible */
-static void serial_starttx(void) {
-    // Can we start transmitting a character?
+static void serial_starttx(void)
+{
+    /* Can we start transmitting a character? */
     if (txidle && n_tx > 0) {
         UART_TXD = txbuf[bufout];
         bufout = (bufout+1) % NBUF;
@@ -53,9 +55,10 @@ static void serial_starttx(void) {
 }
 
 /* serial_enqueue -- add character to output queue */
-static void serial_enqueue(char ch) {
+static void serial_enqueue(char ch)
+{
     while (n_tx == NBUF) {
-        // The buffer is full -- wait for a space to appear
+        /* The buffer is full -- wait for a space to appear */
         receive(INTERRUPT, NULL);
         serial_interrupt();
         serial_starttx();
@@ -67,15 +70,16 @@ static void serial_enqueue(char ch) {
 }
 
 /* serial_task -- driver process for UART */
-static void serial_task(int arg) {
+static void serial_task(int arg)
+{
     message m;
     char ch;
 
     UART_ENABLE = UART_ENABLE_Disabled;
-    UART_BAUDRATE = UART_BAUDRATE_9600; // 9600 baud
+    UART_BAUDRATE = UART_BAUDRATE_9600; /* 9600 baud */
     UART_CONFIG = FIELD(UART_CONFIG_PARITY, UART_PARITY_None);
-                                        // format 8N1
-    UART_PSELTXD = TX;                  // choose pins
+                                        /* format 8N1 */
+    UART_PSELTXD = TX;                  /* choose pins */
     UART_PSELRXD = RX;
     UART_ENABLE = UART_ENABLE_Enabled;
     UART_STARTTX = 1;
@@ -107,19 +111,22 @@ static void serial_task(int arg) {
 }
 
 /* myserial_init -- start the serial driver task */
-void myserial_init(void) {
+void myserial_init(void)
+{
     SERIAL_TASK = start("Serial", serial_task, 0, 256);
 }
 
 /* myserial_putc -- queue a character for output */
-void myserial_putc(char ch) {
+void myserial_putc(char ch)
+{
     message m;
     m.m_i1 = ch;
     send(SERIAL_TASK, PUTC, &m);
 }
 
 /* print_buf -- output routine for use by printf */
-void print_buf(char *buf, int n) {
+void print_buf(char *buf, int n)
+{
     for (int i = 0; i < n; i++) {
         char c = buf[i];
         if (c == '\n') myserial_putc('\r');

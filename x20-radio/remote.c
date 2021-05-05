@@ -18,7 +18,8 @@ static const image letter_B =
           1,0,0,1,0,
           1,1,1,0,0);
 
-void receiver_task(int dummy) {
+void receiver_task(int dummy)
+{
     byte buf[RADIO_PACKET];
     int n;
 
@@ -43,7 +44,8 @@ void receiver_task(int dummy) {
     }
 }
 
-void sender_task(int dummy) {
+void sender_task(int dummy)
+{
     gpio_connect(BUTTON_A);
     gpio_connect(BUTTON_B);
 
@@ -60,7 +62,8 @@ void sender_task(int dummy) {
     }
 }
 
-void init(void) {
+void init(void)
+{
     serial_init();
     radio_init();
     radio_group(GROUP);

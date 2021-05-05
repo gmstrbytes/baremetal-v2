@@ -1,3 +1,6 @@
+/* x1500/total.c */
+/* Copyright (c) 2021 J. M. Spivey */
+
 #include "lib.h"
 #include "hardware.h"
 
@@ -5,13 +8,14 @@
 #define TX USB_TX
 #define RX USB_RX
 
-int txinit;              // UART ready to transmit first char
+int txinit;              /* UART ready to transmit first char */
 
 /* serial_init -- set up UART connection to host */
-void serial_init(void) {
-    UART_BAUDRATE = UART_BAUDRATE_9600; // 9600 baud
-    UART_CONFIG = 0;                    // format 8N1
-    UART_PSELTXD = TX;                  // choose pins
+void serial_init(void)
+{
+    UART_BAUDRATE = UART_BAUDRATE_9600; /* 9600 baud */
+    UART_CONFIG = 0;                    /* format 8N1 */
+    UART_PSELTXD = TX;                  /* choose pins */
     UART_PSELRXD = RX;
     UART_ENABLE = UART_ENABLE_Enabled;
     UART_STARTTX = 1;
@@ -21,7 +25,8 @@ void serial_init(void) {
 }
 
 /* serial_getc -- wait for input character and return it */
-int serial_getc(void) {
+int serial_getc(void)
+{
     while (! UART_RXDRDY) { }
     char ch = UART_RXD;
     UART_RXDRDY = 0;
@@ -29,7 +34,8 @@ int serial_getc(void) {
 }
 
 /* serial_putc -- send output character */
-void serial_putc(char ch) {
+void serial_putc(char ch)
+{
     if (! txinit) {
         while (! UART_TXDRDY) { }
     }
@@ -39,13 +45,15 @@ void serial_putc(char ch) {
 }
 
 /* serial_puts -- send a string character by character */
-void serial_puts(const char *s) {
+void serial_puts(const char *s)
+{
     while (*s != '\0')
         serial_putc(*s++);
 }
 
 /* getline -- input a line of text with line editing */
-void getline(char *buf) {
+void getline(char *buf)
+{
     char *p = buf;
 
     serial_puts("> ");
@@ -79,7 +87,8 @@ void getline(char *buf) {
 }
 
 /* print_buf -- output routine for use by printf */
-void print_buf(char *buf, int n) {
+void print_buf(char *buf, int n)
+{
     for (int i = 0; i < n; i++) {
         char c = buf[i];
         if (c == '\n') serial_putc('\r');
@@ -88,13 +97,15 @@ void print_buf(char *buf, int n) {
 }
 
 /* getnum -- read a line of input and convert to a number */
-int getnum(void) {
+int getnum(void)
+{
     char buf[64];
     getline(buf);
     return atoi(buf);
 }
 
-void init(void) {
+void init(void)
+{
     int n = 0, total;
     int data[10];
 

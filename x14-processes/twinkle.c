@@ -1,5 +1,5 @@
-// x3000/twinkle.c
-// Copyright (c) 2020 J. M. Spivey
+/* x3000/twinkle.c */
+/* Copyright (c) 2020 J. M. Spivey */
 
 #include "hardware.h"
 #include "microbian.h"
@@ -9,10 +9,11 @@ const unsigned period[] = {
     11, 13, 14, 15, 17, 19, 23
 };
 
-#define JIFFY 25 // milliseconds
+#define JIFFY 25 /* milliseconds */
 
 /* blink_task -- blink an LED */
-void blink_task(int j) {
+void blink_task(int j)
+{
     while (1) {
         timer_delay(period[j] * JIFFY);
         GPIO_OUTCLR = BIT(j+4);
@@ -22,7 +23,8 @@ void blink_task(int j) {
 }
 
 /* init -- start the timer and seven blinkies */
-void init(void) {
+void init(void)
+{
     GPIO_DIR = 0xfff0;
     GPIO_OUT = 0x5ff0;
 

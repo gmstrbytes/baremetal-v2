@@ -1,5 +1,5 @@
-// timer.c
-// Copyright (c) 2018-2020 J. M. Spivey
+/* timer.c */
+/* Copyright (c) 2018-2020 J. M. Spivey */
 
 #include "microbian.h"
 #include "hardware.h"
@@ -7,11 +7,11 @@
 static int TIMER_TASK;
 
 #ifdef UBIT_V2
-#define TICK 1                  // Interval between updates (ms)
+#define TICK 1                  /* Interval between updates (ms) */
 #endif
 
 #ifndef TICK
-#define TICK 5                  // Sensible default
+#define TICK 5                  /* Sensible default */
 #endif
 
 #define MAX_TIMERS 8
@@ -34,7 +34,8 @@ static struct {
    will be held up, possibly leading to deadlock. */
 
 /* check_timers -- send any messages that are due */
-static void check_timers(void) {
+static void check_timers(void)
+{
     int i;
     message m;
 
@@ -53,7 +54,8 @@ static void check_timers(void) {
 }
 
 /* create -- create a new timer */
-static void create(int client, int delay, int repeat) {
+static void create(int client, int delay, int repeat)
+{
     int i = 0;
 
     while (i < MAX_TIMERS && timer[i].client >= 0)
@@ -75,8 +77,9 @@ static void create(int client, int delay, int repeat) {
 }
 
 /* timer1_handler -- interrupt handler */
-void timer1_handler(void) {
-    // Update the time here so it is accessible to timer_micros
+void timer1_handler(void)
+{
+    /* Update the time here so it is accessible to timer_micros */
     if (TIMER1_COMPARE[0]) {
         millis += TICK;
         TIMER1_COMPARE[0] = 0;
@@ -84,7 +87,8 @@ void timer1_handler(void) {
     }
 }
 
-static void timer_task(int n) {
+static void timer_task(int n)
+{
     message m;
 
     /* We use Timer 1 because its 16-bit mode is adequate for a clock
@@ -93,7 +97,7 @@ static void timer_task(int n) {
     TIMER1_STOP = 1;
     TIMER1_MODE = TIMER_MODE_Timer;
     TIMER1_BITMODE = TIMER_BITMODE_16Bit;
-    TIMER1_PRESCALER = 4;      // 1MHz = 16MHz / 2^4
+    TIMER1_PRESCALER = 4;      /* 1MHz = 16MHz / 2^4 */
     TIMER1_CLEAR = 1;
     TIMER1_CC[0] = 1000 * TICK;
     TIMER1_SHORTS = BIT(TIMER_COMPARE0_CLEAR);
@@ -120,7 +124,8 @@ static void timer_task(int n) {
 }
 
 /* timer_init -- start the timer task */
-void timer_init(void) {
+void timer_init(void)
+{
     int i;
 
     for (i = 0; i < MAX_TIMERS; i++)
@@ -130,7 +135,8 @@ void timer_init(void) {
 }
 
 /* timer_now -- return current time in milliseconds since startup */
-unsigned timer_now(void) {
+unsigned timer_now(void)
+{
     return millis;
 }
 
@@ -139,7 +145,8 @@ if it does overflow, shorter durations can be measured by taking the
 difference of two readings with unsigned subtraction. */
 
 /* timer_micros -- return microseconds since startup */
-unsigned timer_micros(void) {
+unsigned timer_micros(void)
+{
     unsigned my_millis, ticks1, ticks2, extra;
     
     /* We must allow for the possibility the timer has expired but the
@@ -157,9 +164,9 @@ unsigned timer_micros(void) {
     extra = SYST_CSR & BIT(SYST_CSR_COUNTFLAG);
     ticks2 = SYST_CVR >> 6;
 #else
-    TIMER1_CAPTURE[1] = 1;      // Capture count before testing event
-    extra = TIMER1_COMPARE[0];  // Inspect the expiry event
-    TIMER1_CAPTURE[2] = 1;      // Capture count afterwards
+    TIMER1_CAPTURE[1] = 1;      /* Capture count before testing event */
+    extra = TIMER1_COMPARE[0];  /* Inspect the expiry event */
+    TIMER1_CAPTURE[2] = 1;      /* Capture count afterwards */
     ticks1 = TIMER1_CC[1];
     ticks2 = TIMER1_CC[2];
 #endif
@@ -173,7 +180,8 @@ unsigned timer_micros(void) {
 }
 
 /* timer_delay -- one-shot delay */
-void timer_delay(int msec) {
+void timer_delay(int msec)
+{
     message m;
     m.m_i1 = msec;
     m.m_i2 = 0;                 /* Don't repeat */
@@ -182,7 +190,8 @@ void timer_delay(int msec) {
 }
 
 /* timer_pulse -- regular pulse */
-void timer_pulse(int msec) {
+void timer_pulse(int msec)
+{
     message m;
     m.m_i1 = msec;
     m.m_i2 = msec;              /* Repetitive */
@@ -190,6 +199,7 @@ void timer_pulse(int msec) {
 }
 
 /* wait -- sleep until next timer pulse */
-void timer_wait(void) {
+void timer_wait(void)
+{
     receive(PING, NULL);
 }

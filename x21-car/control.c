@@ -1,5 +1,5 @@
-// remote.c
-// Copyright (c) 2020 J. M. Spivey
+/* x3700/remote.c */
+/* Copyright (c) 2020 J. M. Spivey */
 
 #include "microbian.h"
 #include "hardware.h"
@@ -26,7 +26,8 @@ static const unsigned ahead[] =
           0,1,1,1,0,
           0,1,1,1,0);
 
-void sender_task(int dummy) {
+void sender_task(int dummy)
+{
     gpio_connect(BUTTON_A);
     gpio_connect(BUTTON_B);
 
@@ -51,7 +52,8 @@ void sender_task(int dummy) {
     }
 }
 
-void init(void) {
+void init(void)
+{
     radio_init();
     timer_init();
     display_init();

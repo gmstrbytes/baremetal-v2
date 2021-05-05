@@ -1,5 +1,5 @@
-// microbian.h
-// Copyright (c) 2018 J. M. Spivey
+/* microbian.h */
+/* Copyright (c) 2018 J. M. Spivey */
 
 typedef unsigned char byte;
 
@@ -25,21 +25,21 @@ typedef unsigned char byte;
 #define RECEIVE 12
 
 /* Possible priorities */
-#define P_HANDLER 0             // Interrupt handler
-#define P_HIGH 1                // Responsive
-#define P_LOW 2                 // Normal
-#define P_IDLE 3                // The idle process
-#define NPRIO 3                 // Number of non-idle priorities
+#define P_HANDLER 0             /* Interrupt handler */
+#define P_HIGH 1                /* Responsive */
+#define P_LOW 2                 /* Normal */
+#define P_IDLE 3                /* The idle process */
+#define NPRIO 3                 /* Number of non-idle priorities */
 
-typedef struct {                // 16 bytes
-    unsigned short m_type;      // Type of message
-    unsigned short m_sender;    // PID of sender
-    union {                     // An integer, a pointer, or four bytes
+typedef struct {                /* 16 bytes */
+    unsigned short m_type;      /* Type of message */
+    unsigned short m_sender;    /* PID of sender */
+    union {                     /* An integer, a pointer, or four bytes */
         int m_i1; void *m_p1;
         struct { byte m_b1, m_b2, m_b3, m_b4; };
     };
-    union { int m_i2; void *m_p2; }; // Another integer or pointer
-    union { int m_i3; void *m_p3; }; // A third integer or pointer
+    union { int m_i2; void *m_p2; }; /* Another integer or pointer */
+    union { int m_i3; void *m_p3; }; /* A third integer or pointer */
 } message;
 
 
@@ -48,7 +48,7 @@ typedef struct {                // 16 bytes
 /* start -- create process that will run when init returns; return PID */
 int start(char *name, void (*body)(int), int arg, int stksize);
 
-#define STACK 1024              // Default stack size
+#define STACK 1024              /* Default stack size */
 
 /* SYSTEM CALLS */
 

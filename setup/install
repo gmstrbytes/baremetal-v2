@@ -38,7 +38,7 @@ sudo apt-get -y install \
      geany geany-plugin-projectorganizer \
      gcc-arm-none-eabi gdb-arm-none-eabi \
      pulseview sigrok-firmware-fx2lafw minicom \
-     python3-pip bsdmainutils
+     python3-pip bsdmainutils sed
 /bin/echo
 
 # The Python module cmsis-pack-manager can't be installed on Raspberry

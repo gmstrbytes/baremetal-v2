@@ -1,5 +1,5 @@
-// x3000/valentine.c
-// Copyright (c) 2020 J. M. Spivey
+/* x3000/valentine.c */
+/* Copyright (c) 2020 J. M. Spivey */
 
 #include "hardware.h"
 #include "microbian.h"
@@ -22,9 +22,10 @@ const unsigned small[] =
           0,0,0,0,0);
 
 /* show -- display three rows of a picture n times */
-void show(const unsigned *img, int n) {
+void show(const unsigned *img, int n)
+{
     while (n-- > 0) {
-        // Takes 15msec per iteration
+        /* Takes 15msec per iteration */
         for (int p = 0; p < 10; p += 2) {
             GPIO0_OUT = img[p];
             GPIO1_OUT = img[p+1];
@@ -34,11 +35,12 @@ void show(const unsigned *img, int n) {
 }
 
 /* heart_task -- show beating heart */
-void heart_task(int n) {
+void heart_task(int n)
+{
     GPIO0_DIRSET = LED_MASK0;
     GPIO1_DIRSET = LED_MASK1;
 
-    // Set row pins to high-drive mode to increase brightness
+    /* Set row pins to high-drive mode to increase brightness */
     gpio_drive(ROW1, GPIO_DRIVE_S0H1);
     gpio_drive(ROW2, GPIO_DRIVE_S0H1);
     gpio_drive(ROW3, GPIO_DRIVE_S0H1);
@@ -60,7 +62,8 @@ builtin modulo operation, rather than repeated subtraction.  That
 leaves some CPU time over to look after the blinking lights. */
 
 /* prime -- test for primality */
-int prime(int n) {
+int prime(int n)
+{
     for (int k = 2; k * k <= n; k++) {
         if (n % k == 0)
             return 0;
@@ -70,7 +73,8 @@ int prime(int n) {
 }
 
 /* prime_task -- print primes on the serial port */
-void prime_task(int arg) {
+void prime_task(int arg)
+{
     int n = 2, count = 0;
 
     while (1) {
@@ -83,7 +87,8 @@ void prime_task(int arg) {
 }
 
 /* init -- set the ball rolling */
-void init(void) {
+void init(void)
+{
     serial_init();
     timer_init();
     start("Heart", heart_task, 0, STACK);

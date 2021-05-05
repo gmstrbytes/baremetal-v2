@@ -1,5 +1,5 @@
-// i2c.c
-// Copyright (c) 2019 J. M. Spivey
+/* i2c.c */
+/* Copyright (c) 2019 J. M. Spivey */
 
 #include "microbian.h"
 #include "hardware.h"
@@ -30,7 +30,8 @@ static struct {
 };
 
 /* i2c_wait -- wait for an expected interrupt event and detect error */
-static int i2c_wait(int chan, unsigned volatile *event) {
+static int i2c_wait(int chan, unsigned volatile *event)
+{
     int irq = i2c_pins[chan].irq;
 
     receive(INTERRUPT, NULL);
@@ -50,7 +51,8 @@ static int i2c_wait(int chan, unsigned volatile *event) {
 }
 
 /* i2c_do_write -- send one or more bytes */
-static int i2c_do_write(int chan, char *buf, int n) {
+static int i2c_do_write(int chan, char *buf, int n)
+{
     int status = OK;
 
     /* The I2C hardware makes zero-length writes impossible, because
@@ -66,24 +68,26 @@ static int i2c_do_write(int chan, char *buf, int n) {
 }
 
 /* i2c_stop -- signal stop condition */
-static void i2c_stop(int chan) {
+static void i2c_stop(int chan)
+{
     I2C[chan].I_STOP = 1;
     i2c_wait(chan, &I2C[chan].I_STOPPED);
 }
 
 /* i2c_task -- driver process for I2C hardware */
-static void i2c_task(int chan) {
+static void i2c_task(int chan)
+{
     message m;
     int client, addr, n1, n2, status, error = 0;
     char *buf1, *buf2;
 
-    // Configure I2C hardware
+    /* Configure I2C hardware */
     I2C[chan].I_PSELSCL = i2c_pins[chan].scl;
     I2C[chan].I_PSELSDA = i2c_pins[chan].sda;
     I2C[chan].I_FREQUENCY = I2C_FREQUENCY_100kHz;
     I2C[chan].I_ENABLE = I2C_ENABLE_Enabled;
 
-    // Enable interrupts
+    /* Enable interrupts */
     I2C[chan].I_INTEN = BIT(I2C_INT_RXDREADY) | BIT(I2C_INT_TXDSENT)
         | BIT(I2C_INT_STOPPED) | BIT(I2C_INT_ERROR);
     connect(i2c_pins[chan].irq);
@@ -92,11 +96,11 @@ static void i2c_task(int chan) {
     while (1) {
         receive(ANY, &m);
         client = m.m_sender;
-        addr = m.m_b1;        // Address [0..127] without R/W flag
-        n1 = m.m_b2;          // Number of bytes in command
-        n2 = m.m_b3;          // Number of bytes to transfer (R/W)
-        buf1 = m.m_p2;        // Buffer for command
-        buf2 = m.m_p3;        // Buffer for transfer
+        addr = m.m_b1;        /* Address [0..127] without R/W flag */
+        n1 = m.m_b2;          /* Number of bytes in command */
+        n2 = m.m_b3;          /* Number of bytes to transfer (R/W) */
+        buf1 = m.m_p2;        /* Buffer for command */
+        buf2 = m.m_p3;        /* Buffer for transfer */
 
         switch (m.m_type) {
         case READ:
@@ -104,7 +108,7 @@ static void i2c_task(int chan) {
             status = OK;
              
             if (n1 > 0) {
-                // Write followed by read, with repeated start
+                /* Write followed by read, with repeated start */
                 I2C[chan].I_STARTTX = 1;
                 status = i2c_do_write(chan, buf1, n1);
             }
@@ -155,7 +159,7 @@ static void i2c_task(int chan) {
             I2C[chan].I_ADDRESS = addr;
             status = OK;
 
-            // A single write transaction
+            /* A single write transaction */
             I2C[chan].I_STARTTX = 1;
             if (n1 > 0)
                 status = i2c_do_write(chan, buf1, n1);
@@ -180,7 +184,8 @@ static void i2c_task(int chan) {
 }
 
 /* i2c_init -- start I2C driver process */
-void i2c_init(int chan) {
+void i2c_init(int chan)
+{
     if (I2C_TASK[chan] == 0)
         I2C_TASK[chan] = start("I2C", i2c_task, chan, 256);
 }
@@ -200,34 +205,39 @@ int i2c_xfer(int chan, int kind, int addr,
 }
 
 /* i2c_probe -- try to access an I2C device */
-int i2c_probe(int chan, int addr) {
+int i2c_probe(int chan, int addr)
+{
     byte buf = 0;
     return i2c_xfer(chan, WRITE, addr, &buf, 1, NULL, 0);
 }
      
 /* i2c_read_bytes -- send command and read multi-byte result */
-void i2c_read_bytes(int chan, int addr, int cmd, byte *buf2, int n2) {
+void i2c_read_bytes(int chan, int addr, int cmd, byte *buf2, int n2)
+{
     byte buf1 = cmd;
     int status = i2c_xfer(chan, READ, addr, &buf1, 1, buf2, n2);
     assert(status == OK);
 }
 
 /* i2c_read_reg -- send command and read one byte */
-int i2c_read_reg(int chan, int addr, int cmd) {
+int i2c_read_reg(int chan, int addr, int cmd)
+{
     byte buf;
     i2c_read_bytes(chan, addr, cmd, &buf, 1);
     return buf;
 }
 
 /* i2c_write_bytes -- send command and write multi-byte data */
-void i2c_write_bytes(int chan, int addr, int cmd, byte *buf2, int n2) {
+void i2c_write_bytes(int chan, int addr, int cmd, byte *buf2, int n2)
+{
     byte buf1 = cmd;
     int status = i2c_xfer(chan, WRITE, addr, &buf1, 1, buf2, n2);
     assert(status == OK);
 }
 
 /* i2c_write_reg -- send command and write data */
-void i2c_write_reg(int chan, int addr, int cmd, int val) {
+void i2c_write_reg(int chan, int addr, int cmd, int val)
+{
     byte buf = val;
     i2c_write_bytes(chan, addr, cmd, &buf, 1);
 }

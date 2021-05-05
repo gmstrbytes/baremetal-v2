@@ -1,5 +1,5 @@
-// x3700/car.c
-// Copyright (c) 2021 J. M. Spivey
+/* x3700/car.c */
+/* Copyright (c) 2021 J. M. Spivey */
 
 #include "microbian.h"
 #include "hardware.h"
@@ -7,12 +7,13 @@
 
 int ADAPTER, CONTROL;
 
-// RADIO ADAPTER PROCESS
+/* RADIO ADAPTER PROCESS */
 
 /* Message type for remote command */
 #define CMD 24
 
-void adapter_task(int dummy) {
+void adapter_task(int dummy)
+{
     message m;
     int n;
     byte buf[32];
@@ -27,7 +28,7 @@ void adapter_task(int dummy) {
 }
 
 
-// CONTROL PROCESS
+/* CONTROL PROCESS */
 
 void pwm_change(int width0, int width1);
 void pwm_init(void);
@@ -40,7 +41,8 @@ static int quantum = 0;
 
 int lspeed = 0, rspeed = 0;
 
-void drive(int lsp, int rsp, int t) {
+void drive(int lsp, int rsp, int t)
+{
     if (lsp != lspeed || rsp != rspeed) {
         lspeed = lsp; rspeed = rsp;
         pwm_change(REST-lspeed, REST+rspeed);
@@ -48,13 +50,15 @@ void drive(int lsp, int rsp, int t) {
     quantum = t;
 }
 
-void stop(void) {
-    // We disconnect the motors to avoid the problem of creep
+void stop(void)
+{
+    /* We disconnect the motors to avoid the problem of creep */
     lspeed = rspeed = 0;
     pwm_change(0, 0);
 }
 
-void control_task(int dummy) {
+void control_task(int dummy)
+{
     message m;
     char cmd;
 
@@ -87,7 +91,8 @@ void control_task(int dummy) {
     }
 }
 
-void init(void) {
+void init(void)
+{
     timer_init();
     radio_init();
     pwm_init();

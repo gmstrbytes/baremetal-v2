@@ -1,5 +1,5 @@
-// squirt.c
-// Copyright (c) J. M. Spivey 2020
+/* squirt.c */
+/* Copyright (c) J. M. Spivey 2020 */
 
 /* Squirt a text file at the micro:bit */
 
@@ -9,7 +9,8 @@
 
 #define DEVICE "/dev/ttyACM0"   /* TTY device for the micro:bit */
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     FILE *fin, *fout;
 
     if (argc != 2) {

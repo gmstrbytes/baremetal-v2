@@ -1,10 +1,11 @@
-// bitbang.c
-// Copyright (c) 2020 J. M. Spivey
+/* bitbang.c */
+/* Copyright (c) 2020 J. M. Spivey */
 
 #include "hardware.h"
 
 /* rng_init -- initialise hardware random number generator */
-void rng_init(void) {
+void rng_init(void)
+{
     /* Setting the DERCEN bit enables the bias elimination algorithm,
        and makes the intervals between random bytes irregular. */
     SET_BIT(RNG_CONFIG, RNG_CONFIG_DERCEN);
@@ -15,10 +16,11 @@ void rng_init(void) {
 }
 
 /* rng_handler -- interrupt handler for random number generator */
-void rng_handler(void) {
+void rng_handler(void)
+{
     if (RNG_VALRDY) {
         gpio_out(PAD1, 1);
-        RNG_VALRDY = 0;         // Just acknowledge the interrupt
+        RNG_VALRDY = 0;         /* Just acknowledge the interrupt */
         gpio_out(PAD1, 0);
     }
 }
@@ -27,7 +29,8 @@ void rng_handler(void) {
 #define nop10()  nop5(); nop5()
 
 /* square_out -- generate square wave by bit-banging */
-CODERAM void square_out(void) {
+CODERAM void square_out(void)
+{
     while (1) {
         gpio_out(PAD0, 0);
         nop10(); nop10(); nop10(); nop();
@@ -37,7 +40,8 @@ CODERAM void square_out(void) {
 }    
 
 /* init -- main program */
-void init(void) {
+void init(void)
+{
     gpio_dir(PAD0, 1);
     gpio_dir(PAD1, 1);
 

@@ -1,5 +1,5 @@
-// x3040/pcount.c
-// Copyright (c) 2018-20 J. M. Spivey
+/* x3040/pcount.c */
+/* Copyright (c) 2018-20 J. M. Spivey */
 
 #include "microbian.h"
 #include "lib.h"
@@ -10,7 +10,8 @@ int PRODUCER, CONSUMER;
 #define PRIME 42
 
 /* prime -- test for primality */
-int prime(int n) {
+int prime(int n)
+{
     for (int k = 2; k * k <= n; k++) {
         if (n % k == 0)
             return 0;
@@ -20,7 +21,8 @@ int prime(int n) {
 }
 
 /* producer -- process that sends primes to consumer */
-void producer(int arg) {
+void producer(int arg)
+{
     int n = 2;
     message m1;
 
@@ -34,7 +36,8 @@ void producer(int arg) {
 }
 
 /* consumer -- receive primes and count them */
-void consumer(int arg) {
+void consumer(int arg)
+{
     int count = 0, limit = 1000;
     message m2;
 
@@ -48,7 +51,8 @@ void consumer(int arg) {
     }
 }
 
-void init(void) {
+void init(void)
+{
     serial_init();
     PRODUCER = start("Produce", producer, 0, STACK);
     CONSUMER = start("Consume", consumer, 0, STACK);

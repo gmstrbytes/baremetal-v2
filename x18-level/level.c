@@ -1,5 +1,5 @@
-// level.c
-// Copyright (c) 2019 J. M. Spivey
+/* x3300/level.c */
+/* Copyright (c) 2019 J. M. Spivey */
 
 #include "microbian.h"
 #include "hardware.h"
@@ -7,7 +7,8 @@
 #include "accel.h"
 
 /* light -- show one pixel */
-void light(int x, int y) {
+void light(int x, int y)
+{
     image screen;
     image_clear(screen);
     image_set(x, y, screen);
@@ -15,7 +16,8 @@ void light(int x, int y) {
 }
 
 /* scale -- map acceleration to coordinate */
-static int scale(int x) {
+static int scale(int x)
+{
     if (x < -20) return 4;
     if (x < -10) return 3;
     if (x <= 10) return 2;
@@ -23,7 +25,8 @@ static int scale(int x) {
     return 0;
 }
 
-static void i2c_map(void) {
+static void i2c_map(void)
+{
     static char *hex = "0123456789abcdef";
 
     printf("I2C bus map:\n");
@@ -33,7 +36,7 @@ static void i2c_map(void) {
         for (int b = 0; b < 16; b++) {
             int addr = (a<<4) + b;
             if (addr < 0x08 || addr >= 0x78)
-                // Reserved addresses
+                /* Reserved addresses */
                 printf("   ");
             else {
                 int status = i2c_probe(I2C_INTERNAL, addr);
@@ -48,7 +51,8 @@ static void i2c_map(void) {
 }
 
 /* main_task -- show the spirit level */
-static void main(int n) {
+static void main(int n)
+{
     int x, y, z;
 
     printf("Hello\n\n");
@@ -66,7 +70,8 @@ static void main(int n) {
     }
 }
 
-void init(void) {
+void init(void)
+{
     serial_init();
     timer_init();
     i2c_init(I2C_INTERNAL);
