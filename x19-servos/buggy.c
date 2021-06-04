@@ -2,21 +2,18 @@
 /* Copyright (c) 2020 J. M. Spivey */
 
 #include "microbian.h"
+#include "pwm.h"
 
-void pwm_change(int width0, int width1);
-void pwm_init(void);
+#define REST 1500               /* PWM setting for stationary wheel */
+#define SPEED 500               /* PWM increment for motion */
 
-
-/* Main program */
-
-#define REST 1500
-#define SPEED 500
-
+/* drive -- set PWM to drive or rest */
 void drive(int lspeed, int rspeed)
 {
     pwm_change(REST-lspeed, REST+rspeed);
 }
 
+/* control_task -- repeat fixed sequence of motions */
 void control_task(int dummy)
 {
     timer_delay(1000);

@@ -1,7 +1,7 @@
-# x21/Makefile
+# x31/Makefile
 # Copyright (c) 2020-21 J. M. Spivey
 
-all: car.hex control.hex
+all: lights.hex
 
 CC = arm-none-eabi-gcc
 CPU = -mcpu=cortex-m4 -mthumb
@@ -20,7 +20,7 @@ vpath %.h ../microbian
 %.o: %.s
 	$(AS) $(CPU) $< -o $@
 
-%.elf: %.o ../microbian/microbian.a ../microbian/startup.o
+%.elf: %.o adc.o ../microbian/microbian.a ../microbian/startup.o
 	$(CC) $(CPU) $(CFLAGS) -T ../microbian/nRF52833.ld \
 		$^ -nostdlib -lgcc -lc -o $@ -Wl,-Map,$*.map
 	$(SIZE) $@
@@ -44,6 +44,4 @@ clean:
 
 ###
 
-car.elf: pwm.o
-
-car.o control.o: hardware.h microbian.h pwm.h
+lights.o adc.o: microbian.h lib.h hardware.h

@@ -36,11 +36,11 @@ static int i2c_wait(int chan, unsigned volatile *event)
 
     receive(INTERRUPT, NULL);
 
-    if (I2C[chan].I_ERROR) {
-        I2C[chan].I_ERROR = 0; 
+    if (I2C[chan]->ERROR) {
+        I2C[chan]->ERROR = 0; 
         clear_pending(irq);
         enable_irq(irq);
-        return ERROR;
+        return ERR;
     }      
 
     assert(*event);
@@ -59,8 +59,8 @@ static int i2c_do_write(int chan, char *buf, int n)
        there is no event generated when the address has been sent. */
 
     for (int i = 0; i < n; i++) {
-        I2C[chan].I_TXD = buf[i];
-        status = i2c_wait(chan, &I2C[chan].I_TXDSENT);
+        I2C[chan]->TXD = buf[i];
+        status = i2c_wait(chan, &I2C[chan]->TXDSENT);
         if (status != OK) return status;
     }
 
@@ -70,8 +70,8 @@ static int i2c_do_write(int chan, char *buf, int n)
 /* i2c_stop -- signal stop condition */
 static void i2c_stop(int chan)
 {
-    I2C[chan].I_STOP = 1;
-    i2c_wait(chan, &I2C[chan].I_STOPPED);
+    I2C[chan]->STOP = 1;
+    i2c_wait(chan, &I2C[chan]->STOPPED);
 }
 
 /* i2c_task -- driver process for I2C hardware */
@@ -82,13 +82,13 @@ static void i2c_task(int chan)
     char *buf1, *buf2;
 
     /* Configure I2C hardware */
-    I2C[chan].I_PSELSCL = i2c_pins[chan].scl;
-    I2C[chan].I_PSELSDA = i2c_pins[chan].sda;
-    I2C[chan].I_FREQUENCY = I2C_FREQUENCY_100kHz;
-    I2C[chan].I_ENABLE = I2C_ENABLE_Enabled;
+    I2C[chan]->PSELSCL = i2c_pins[chan].scl;
+    I2C[chan]->PSELSDA = i2c_pins[chan].sda;
+    I2C[chan]->FREQUENCY = I2C_FREQUENCY_100kHz;
+    I2C[chan]->ENABLE = I2C_ENABLE_Enabled;
 
     /* Enable interrupts */
-    I2C[chan].I_INTEN = BIT(I2C_INT_RXDREADY) | BIT(I2C_INT_TXDSENT)
+    I2C[chan]->INTEN = BIT(I2C_INT_RXDREADY) | BIT(I2C_INT_TXDSENT)
         | BIT(I2C_INT_STOPPED) | BIT(I2C_INT_ERROR);
     connect(i2c_pins[chan].irq);
     enable_irq(i2c_pins[chan].irq);
@@ -104,12 +104,12 @@ static void i2c_task(int chan)
 
         switch (m.m_type) {
         case READ:
-            I2C[chan].I_ADDRESS = addr;
+            I2C[chan]->ADDRESS = addr;
             status = OK;
              
             if (n1 > 0) {
                 /* Write followed by read, with repeated start */
-                I2C[chan].I_STARTTX = 1;
+                I2C[chan]->STARTTX = 1;
                 status = i2c_do_write(chan, buf1, n1);
             }
 
@@ -123,44 +123,44 @@ static void i2c_task(int chan)
                        an ACK after receiving the byte.  Use STOP to
                        send a NACK at the end. */
                     if (i < n2-1)
-                        I2C[chan].I_SHORTS = BIT(I2C_BB_SUSPEND);
+                        I2C[chan]->SHORTS = BIT(I2C_BB_SUSPEND);
                     else
-                        I2C[chan].I_SHORTS = BIT(I2C_BB_STOP);
+                        I2C[chan]->SHORTS = BIT(I2C_BB_STOP);
         
                     /* Start the first byte with STARTTX, and the rest
                        with RESUME following the SUSPEND. */
                     if (i == 0)
-                        I2C[chan].I_STARTRX = 1;
+                        I2C[chan]->STARTRX = 1;
                     else
-                        I2C[chan].I_RESUME = 1;
+                        I2C[chan]->RESUME = 1;
         
-                    status = i2c_wait(chan, &I2C[chan].I_RXDREADY);
+                    status = i2c_wait(chan, &I2C[chan]->RXDREADY);
                     if (status != OK) break;
-                    buf2[i] = I2C[chan].I_RXD;
+                    buf2[i] = I2C[chan]->RXD;
                 }
             }
             
             if (status == OK)
-                i2c_wait(chan, &I2C[chan].I_STOPPED);
+                i2c_wait(chan, &I2C[chan]->STOPPED);
 
             if (status != OK) {
                 i2c_stop(chan);
-                error = I2C[chan].I_ERRORSRC;
-                I2C[chan].I_ERRORSRC = I2C_ERRORSRC_All;
+                error = I2C[chan]->ERRORSRC;
+                I2C[chan]->ERRORSRC = I2C_ERRORSRC_All;
             }
 
-            I2C[chan].I_SHORTS = 0;
+            I2C[chan]->SHORTS = 0;
             m.m_i1 = status;
             m.m_i2 = error;
             send(client, REPLY, &m);
             break;
 
         case WRITE:
-            I2C[chan].I_ADDRESS = addr;
+            I2C[chan]->ADDRESS = addr;
             status = OK;
 
             /* A single write transaction */
-            I2C[chan].I_STARTTX = 1;
+            I2C[chan]->STARTTX = 1;
             if (n1 > 0)
                 status = i2c_do_write(chan, buf1, n1);
             if (status == OK && n2 > 0)
@@ -168,8 +168,8 @@ static void i2c_task(int chan)
             i2c_stop(chan);
 
             if (status != OK) {
-                error = I2C[chan].I_ERRORSRC;
-                I2C[chan].I_ERRORSRC = I2C_ERRORSRC_All;
+                error = I2C[chan]->ERRORSRC;
+                I2C[chan]->ERRORSRC = I2C_ERRORSRC_All;
             }
                
             m.m_i1 = status;

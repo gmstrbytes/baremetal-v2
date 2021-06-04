@@ -22,7 +22,6 @@ void blink_task(int j)
     }
 }
 
-/* init -- start the timer and seven blinkies */
 void init(void)
 {
     GPIO_DIR = 0xfff0;

@@ -3,7 +3,7 @@
 	
         .syntax unified
 
-	.equ printf, 0x00000544 @ Address of printf
+	.equ printf, 0x00000534 @ Address of printf
 	.equ frame, 0x2001efa0  @ Captured stack pointer value in init
 
 	.text

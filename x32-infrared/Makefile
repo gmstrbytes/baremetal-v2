@@ -1,7 +1,7 @@
-# x21/Makefile
+# x32/Makefile
 # Copyright (c) 2020-21 J. M. Spivey
 
-all: car.hex control.hex
+all: decode.hex
 
 CC = arm-none-eabi-gcc
 CPU = -mcpu=cortex-m4 -mthumb
@@ -44,6 +44,4 @@ clean:
 
 ###
 
-car.elf: pwm.o
-
-car.o control.o: hardware.h microbian.h pwm.h
+decode.o: microbian.h hardware.h lib.h

@@ -3,7 +3,6 @@
 
 #include "hardware.h"
 #include "lib.h"
-#include <stdarg.h>
 
 /* Pins to use for serial communication */
 #define TX USB_TX
@@ -14,25 +13,25 @@ int txinit;              /* UART ready to transmit first char */
 /* serial_init -- set up UART connection to host */
 void serial_init(void)
 {
-    UART_ENABLE = UART_ENABLE_Disabled;
-    UART_BAUDRATE = UART_BAUDRATE_9600; /* 9600 baud */
-    UART_CONFIG = FIELD(UART_CONFIG_PARITY, UART_PARITY_None);
+    UART.ENABLE = UART_ENABLE_Disabled;
+    UART.BAUDRATE = UART_BAUDRATE_9600; /* 9600 baud */
+    UART.CONFIG = FIELD(UART_CONFIG_PARITY, UART_PARITY_None);
                                         /* format 8N1 */
-    UART_PSELTXD = TX;                  /* choose pins */
-    UART_PSELRXD = RX;
-    UART_ENABLE = UART_ENABLE_Enabled;
-    UART_STARTTX = 1;
-    UART_STARTRX = 1;
-    UART_RXDRDY = 0;
+    UART.PSELTXD = TX;                  /* choose pins */
+    UART.PSELRXD = RX;
+    UART.ENABLE = UART_ENABLE_Enabled;
+    UART.STARTTX = 1;
+    UART.STARTRX = 1;
+    UART.RXDRDY = 0;
     txinit = 1;
 }
 
 /* serial_getc -- wait for input character and return it */
 int serial_getc(void)
 {
-    while (! UART_RXDRDY) { }
-    char ch = UART_RXD;
-    UART_RXDRDY = 0;
+    while (! UART.RXDRDY) { }
+    char ch = UART.RXD;
+    UART.RXDRDY = 0;
     return ch;
 }
 
@@ -40,11 +39,11 @@ int serial_getc(void)
 void serial_putc(char ch)
 {
     if (! txinit) {
-        while (! UART_TXDRDY) { }
+        while (! UART.TXDRDY) { }
     }
     txinit = 0;
-    UART_TXDRDY = 0;
-    UART_TXD = ch;
+    UART.TXDRDY = 0;
+    UART.TXD = ch;
 }
 
 /* serial_puts -- send a string character by character */
@@ -111,29 +110,33 @@ int getnum(char *prompt)
         return atoi(buf);
 }
 
-/* fmt_fixed -- format n*t/10^k as a decimal */
-char *fmt_fixed(unsigned t, unsigned n, int k)
+/* fmt_fixed -- format t/s as a decimal to n places */
+char *fmt_fixed(unsigned t, unsigned s, int n)
 {
     static char buf[32];
-    char *p = &buf[32], *p0;
-    int d = 0;
-    unsigned q = 1, v, x;
-    for (int i = 0; i < k; i++) q *= 10;
-    v = n * (t % q);
+    char *p = &buf[32];
+    unsigned v;
+
+    /* Scale and round to n places: could round to next integer */
+    v = 2 * (t % s);
+    for (int d = 0; d < n; d++) v *= 10;
+    v = (v+s) / (2*s);
+
+    /* Fractional part */
     *(--p) = '\0';
-    p0 = p;
-    while (d < k) {
-        x = v % 10;
-        if (x > 0 || p < p0 || d == k-1)
-            *(--p) = x + '0';
-        v /= 10; d++;
+    for (int d = 0; d < n; d++) {
+        *(--p) = v % 10 + '0';
+        v /= 10;
     }
-    v += n * (t / q);
+
+    /* Integer part, including any carry from rounding up */
+    v += t / s;
     *(--p) = '.';
     do {
         *(--p) = v % 10 + '0';
         v /= 10;
     } while (v > 0);
+
     return p;
 }
 
@@ -144,32 +147,41 @@ unsigned easy_mod(unsigned a, unsigned b)
 }
 
 #ifdef UBIT_V1
-#define FUDGE 20                /* ticks of overhead for function call */
-#define MULT 1
-#define DIV 1
-#define RES 625
-#define SCALE 4
+void clock_init(void)
+{
+    /* Set up TIMER0 in 32 bit mode */
+    TIMER0.MODE = TIMER_MODE_Timer;
+    TIMER0.BITMODE = TIMER_BITMODE_32Bit;
+    TIMER0.PRESCALER = 0; /* Count at 16MHz */
+    TIMER0.START = 1;
+}    
+
+#define clock_start()  TIMER0.CLEAR = 1
+#define clock_stop()   (TIMER0.CAPTURE[0] = 1, TIMER0.CC[0])
+        
+#define FUDGE 9                 /* ticks of overhead for function call */
+#define MULT 1                  /* clock cycles per tick */
+#define FREQ 16                 /* clock frequency */
 #endif
 
 #ifdef UBIT_V2
-#define FUDGE 8                 /* ticks of overhead for function call */
-#define MULT 4
-#define DIV 1
-#define RES 625
-#define SCALE 4
-#endif
+void clock_init(void)
+{
+    /* Enable the cycle counter, part of the data watchpoint and trace module */
+    SET_BIT(DEBUG.DEMCR, DEBUG_DEMCR_TRCENA);
+    SET_BIT(DWT.CTRL, DWT_CTRL_CYCCNTENA);
+}
 
-#ifdef KL25Z
-#define FUDGE 0
-#define MULT 2
-#define DIV 3
-#define RES 125
-#define SCALE 3
+#define clock_start()  DWT.CYCCNT = 0
+#define clock_stop()   DWT.CYCCNT
+
+#define FUDGE 5
+#define MULT 1
+#define FREQ 64
 #endif
 
 extern int func(int a, int b);
 
-/* init -- main program */
 void init(void)
 {
     unsigned time;
@@ -177,56 +189,25 @@ void init(void)
     serial_init();
     printf("\nHello micro:world!\n\n");
       
-#ifdef UBIT
     led_init();
-
-    /* Set up TIMER0 in 32 bit mode */
-    TIMER0_MODE = TIMER_MODE_Timer;
-    TIMER0_BITMODE = TIMER_BITMODE_32Bit;
-    TIMER0_PRESCALER = 0; /* Count at 16MHz */
-    TIMER0_START = 1;
-#endif
-
-#ifdef KL25Z
-    pin_function(LED_BLUE, 1);
-    pin_mode(LED_BLUE, PORT_MODE_PullNone);
-    pin_dir(LED_BLUE, 1);
-    pin_value(LED_BLUE, 1);
-    
-    /* Set up PIT to count at 24MHz */
-    SET_BIT(SIM_SCGC6, SIM_SCGC6_PIT); /* Enable clock */
-    PIT_MCR = 0;
-    PIT0_LDVAL = 0xffffffff;
-#endif    
+    clock_init();
 
     while (1) {
         int a, b, c;
         a = getnum("a = ");
         b = getnum("b = ");
 
-#ifdef UBIT
-        TIMER0_CLEAR = 1;
         led_dot();
+        clock_start();
         c = func(a, b);
+        time = clock_stop();
         led_off();
-        TIMER0_CAPTURE[0] = 1;
-        time = TIMER0_CC[0];
-#endif
         
-#ifdef KL25Z
-        PIT0_TCTRL = BIT(PIT_TCTRL_TEN);
-        pin_value(LED_BLUE, 0);
-        c = func(a, b);
-        pin_value(LED_BLUE, 0);
-        time = ~PIT0_CVAL;
-        PIT0_TCTRL = 0;
-#endif
-
         time -= FUDGE;
         printf("func(%d, %d) = %d\n", a, b, c);
         printf("func(%x, %x) = %x\n", a, b, c);
         printf("%d cycle%s, %s microsec\n\n",
                time*MULT, (time*MULT == 1 ? "" : "s"),
-               fmt_fixed(time/DIV, RES, SCALE));
+               fmt_fixed(time, FREQ, 3));
     }
 }

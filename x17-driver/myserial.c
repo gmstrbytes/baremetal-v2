@@ -3,7 +3,6 @@
 
 #include "microbian.h"
 #include "hardware.h"
-#include <stdarg.h>
 
 #define TX USB_TX
 #define RX USB_RX
@@ -33,9 +32,9 @@ static int txidle = 1;          /* True if transmitter is idle */
 /* serial_interrupt -- handle serial interrupt */
 static void serial_interrupt(void)
 {
-    if (UART_TXDRDY) {
+    if (UART.TXDRDY) {
         txidle = 1;
-        UART_TXDRDY = 0;
+        UART.TXDRDY = 0;
     }
 
     clear_pending(UART_IRQ);
@@ -47,7 +46,7 @@ static void serial_starttx(void)
 {
     /* Can we start transmitting a character? */
     if (txidle && n_tx > 0) {
-        UART_TXD = txbuf[bufout];
+        UART.TXD = txbuf[bufout];
         bufout = (bufout+1) % NBUF;
         n_tx--;
         txidle = 0;
@@ -75,16 +74,16 @@ static void serial_task(int arg)
     message m;
     char ch;
 
-    UART_ENABLE = UART_ENABLE_Disabled;
-    UART_BAUDRATE = UART_BAUDRATE_9600; /* 9600 baud */
-    UART_CONFIG = FIELD(UART_CONFIG_PARITY, UART_PARITY_None);
+    UART.ENABLE = UART_ENABLE_Disabled;
+    UART.BAUDRATE = UART_BAUDRATE_9600; /* 9600 baud */
+    UART.CONFIG = FIELD(UART_CONFIG_PARITY, UART_PARITY_None);
                                         /* format 8N1 */
-    UART_PSELTXD = TX;                  /* choose pins */
-    UART_PSELRXD = RX;
-    UART_ENABLE = UART_ENABLE_Enabled;
-    UART_STARTTX = 1;
+    UART.PSELTXD = TX;                  /* choose pins */
+    UART.PSELRXD = RX;
+    UART.ENABLE = UART_ENABLE_Enabled;
+    UART.STARTTX = 1;
 
-    UART_INTENSET = BIT(UART_INT_TXDRDY);
+    UART.INTENSET = BIT(UART_INT_TXDRDY);
     connect(UART_IRQ);
     enable_irq(UART_IRQ);
     txidle = 1;

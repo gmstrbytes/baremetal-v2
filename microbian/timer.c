@@ -80,9 +80,9 @@ static void create(int client, int delay, int repeat)
 void timer1_handler(void)
 {
     /* Update the time here so it is accessible to timer_micros */
-    if (TIMER1_COMPARE[0]) {
+    if (TIMER1.COMPARE[0]) {
         millis += TICK;
-        TIMER1_COMPARE[0] = 0;
+        TIMER1.COMPARE[0] = 0;
         interrupt(TIMER_TASK);
     }
 }
@@ -94,15 +94,15 @@ static void timer_task(int n)
     /* We use Timer 1 because its 16-bit mode is adequate for a clock
        with up to 1us resolution and 1ms period, leaving the 32-bit
        Timer 0 for other purposes. */
-    TIMER1_STOP = 1;
-    TIMER1_MODE = TIMER_MODE_Timer;
-    TIMER1_BITMODE = TIMER_BITMODE_16Bit;
-    TIMER1_PRESCALER = 4;      /* 1MHz = 16MHz / 2^4 */
-    TIMER1_CLEAR = 1;
-    TIMER1_CC[0] = 1000 * TICK;
-    TIMER1_SHORTS = BIT(TIMER_COMPARE0_CLEAR);
-    TIMER1_INTENSET = BIT(TIMER_INT_COMPARE0);
-    TIMER1_START = 1;
+    TIMER1.STOP = 1;
+    TIMER1.MODE = TIMER_MODE_Timer;
+    TIMER1.BITMODE = TIMER_BITMODE_16Bit;
+    TIMER1.PRESCALER = 4;      /* 1MHz = 16MHz / 2^4 */
+    TIMER1.CLEAR = 1;
+    TIMER1.CC[0] = 1000 * TICK;
+    TIMER1.SHORTS = BIT(TIMER_COMPARE0_CLEAR);
+    TIMER1.INTENSET = BIT(TIMER_INT_COMPARE0);
+    TIMER1.START = 1;
     enable_irq(TIMER1_IRQ);
 
     while (1) {
@@ -154,7 +154,7 @@ unsigned timer_micros(void)
        could happen between looking at the timer and looking at the
        interrupt flag.  The approach is to take two readings with
        interrupts disabled, one before and one after checking the
-       flag.  If the flag is set, but the reading has not gone down
+       flag.  If the flag is set, but the value has not gone down
        between the two readings, that indicates the expiry happened
        before the first reading, so an extra tick should be added.*/
 
@@ -164,11 +164,11 @@ unsigned timer_micros(void)
     extra = SYST_CSR & BIT(SYST_CSR_COUNTFLAG);
     ticks2 = SYST_CVR >> 6;
 #else
-    TIMER1_CAPTURE[1] = 1;      /* Capture count before testing event */
-    extra = TIMER1_COMPARE[0];  /* Inspect the expiry event */
-    TIMER1_CAPTURE[2] = 1;      /* Capture count afterwards */
-    ticks1 = TIMER1_CC[1];
-    ticks2 = TIMER1_CC[2];
+    TIMER1.CAPTURE[1] = 1;      /* Capture count before testing event */
+    extra = TIMER1.COMPARE[0];  /* Inspect the expiry event */
+    TIMER1.CAPTURE[2] = 1;      /* Capture count afterwards */
+    ticks1 = TIMER1.CC[1];
+    ticks2 = TIMER1.CC[2];
 #endif
     my_millis = millis;
     intr_enable();

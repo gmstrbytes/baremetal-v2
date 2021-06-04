@@ -20,7 +20,7 @@ typedef unsigned char byte;
 #define READ 7
 #define WRITE 8
 #define OK 9
-#define ERROR 10
+#define ERR 10
 #define SEND 11
 #define RECEIVE 12
 
@@ -132,7 +132,3 @@ void display_init(void);
 extern const unsigned blank[];
 void image_clear(unsigned *img);
 void image_set(int x, int y, unsigned *img);
-
-/* adc.c */
-int adc_reading(int pin);
-void adc_init(void);

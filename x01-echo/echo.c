@@ -11,7 +11,6 @@ void serial_getline(const char *prompt, char *buf, int len);
 
 char linebuf[NBUF];
 
-/* init -- main program */
 void init(void)
 {
     serial_init();

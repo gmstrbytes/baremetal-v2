@@ -68,12 +68,12 @@ extern unsigned char __xram_start[], __xram_end[],
 void __reset(void)
 {
     /* Activate the crystal clock */
-    CLOCK_HFCLKSTARTED = 0;
-    CLOCK_HFCLKSTART = 1;
-    while (! CLOCK_HFCLKSTARTED) { }
+    CLOCK.HFCLKSTARTED = 0;
+    CLOCK.HFCLKSTART = 1;
+    while (! CLOCK.HFCLKSTARTED) { }
 
     /* Enable the instruction cache */
-    SET_BIT(NVMC_ICACHECONF, NVMC_ICACHECONF_CACHEEN);
+    SET_BIT(NVMC.ICACHECONF, NVMC_ICACHECONF_CACHEEN);
 
     /* Copy xram and data segments and zero out bss. */
     int xram_size = __xram_end - __xram_start;
@@ -97,13 +97,31 @@ with integers in the range [0..255]. */
 void irq_priority(int irq, unsigned prio)
 {
     if (irq < 0)
-        SET_BYTE(SCB_SHPR[(irq+8) >> 2], irq & 0x3, prio);
+        SET_BYTE(SCB.SHPR[(irq+8) >> 2], irq & 0x3, prio);
     else
-        SET_BYTE(NVIC_IPR[irq >> 2], irq & 0x3, prio);
+        SET_BYTE(NVIC.IPR[irq >> 2], irq & 0x3, prio);
 }
      
 /* See hardware.h for macros enable_irq, disable_irq, clear_pending, 
 reschedule */
+
+
+/* Device register arrays */
+_DEVSTRUCT _gpio * const GPIO[2] = {
+    &GPIO0, &GPIO1
+};
+
+_DEVSTRUCT _i2c * const I2C[2] = {
+    &I2C0, &I2C1
+};
+
+_DEVSTRUCT _timer * const TIMER[5] = {
+    &TIMER0, &TIMER1, &TIMER2, &TIMER3, &TIMER4
+};
+
+_DEVSTRUCT _pwm * const PWM[4] = {
+    &PWM0, &PWM1, &PWM2, &PWM3
+};
 
 
 /*  INTERRUPT VECTORS */
@@ -144,19 +162,19 @@ void spin(void)
 
     intr_disable();
 
-    GPIO0_DIR = LED_MASK0;
-    GPIO1_DIR = LED_MASK1;
+    GPIO0.DIR = LED_MASK0;
+    GPIO1.DIR = LED_MASK1;
     
     while (1) {
         for (k = 33; k > 0; k--) { /* 0.5s on */
             for (i = 0; i < 6; i += 2) { /* 15ms per loop */
-                GPIO[0].G_OUT = ssod[i];
-                GPIO[1].G_OUT = ssod[i+1];
+                GPIO0.OUT = ssod[i];
+                GPIO1.OUT = ssod[i+1];
                 delay_loop(5000);
             }
         }
-        GPIO[0].G_OUT = 0;
-        GPIO[0].G_OUT = 0;
+        GPIO0.OUT = 0;
+        GPIO0.OUT = 0;
         delay_loop(100000); /* 0.1s off */
     }          
 }

@@ -414,11 +414,17 @@ void default_handler(void)
     interrupt(task);
 }
 
+static const char *exc_name[] = {
+    "*zero*", "Reset", "NMI", "HardFault",
+    "MemManage", "BusFault", "UsageFault"
+};
+
 /* hardfault_handler -- substitutes for the definition in startup.c */
 void hardfault_handler(void)
 {
     /* On nRF52, other exceptions come here too */
-    panic("HardFault");
+    int fault = active_irq() + 16;
+    panic("Unexpected fault %s", exc_name[fault]);
 }
 
 
@@ -674,24 +680,24 @@ static void kprintf_setup(void)
     gpio_dir(USB_TX, 1); gpio_dir(USB_RX, 0); gpio_out(USB_TX, 1);
 
     /* Reconfigure the UART just to be sure */
-    UART_ENABLE = UART_ENABLE_Disabled;
-    UART_BAUDRATE = UART_BAUDRATE_9600; /* 9600 baud */
-    UART_CONFIG = FIELD(UART_CONFIG_PARITY, UART_PARITY_None);
+    UART.ENABLE = UART_ENABLE_Disabled;
+    UART.BAUDRATE = UART_BAUDRATE_9600; /* 9600 baud */
+    UART.CONFIG = FIELD(UART_CONFIG_PARITY, UART_PARITY_None);
                                         /* format 8N1 */
-    UART_PSELTXD = USB_TX;              /* choose pins */
-    UART_PSELRXD = USB_RX;
-    UART_ENABLE = UART_ENABLE_Enabled;
-    UART_STARTTX = 1;
-    UART_STARTRX = 1;
-    UART_RXDRDY = 0;
+    UART.PSELTXD = USB_TX;              /* choose pins */
+    UART.PSELRXD = USB_RX;
+    UART.ENABLE = UART_ENABLE_Enabled;
+    UART.STARTTX = 1;
+    UART.STARTRX = 1;
+    UART.RXDRDY = 0;
 }
 
 /* kputc -- send output character */
 static void kputc(char ch)
 {
-    UART_TXD = ch;
-    while (! UART_TXDRDY) { }
-    UART_TXDRDY = 0;
+    UART.TXD = ch;
+    while (! UART.TXDRDY) { }
+    UART.TXDRDY = 0;
 }
 
 /* kprintf_internal -- internal version of kprintf */

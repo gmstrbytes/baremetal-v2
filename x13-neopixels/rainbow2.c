@@ -77,7 +77,6 @@ unsigned hue(int i)
 /* pix -- buffer for a frame of pixels */
 unsigned pix[NPIX];
 
-/* init -- main program */
 void init(void)
 {
     int u = 0;

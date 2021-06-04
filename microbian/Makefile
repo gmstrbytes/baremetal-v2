@@ -9,7 +9,7 @@ CC = arm-none-eabi-gcc
 AS = arm-none-eabi-as
 AR = arm-none-eabi-ar
 
-DRIVERS = timer.o serial.o i2c.o radio.o display.o adc.o
+DRIVERS = timer.o serial.o i2c.o radio.o display.o
 
 MICROBIAN = microbian.o mpx-m4.o $(DRIVERS) lib.o
 

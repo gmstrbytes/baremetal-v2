@@ -1,6 +1,8 @@
 /* x3700/remote.c */
 /* Copyright (c) 2020 J. M. Spivey */
 
+/* Transmitter for remote controlled car */
+
 #include "microbian.h"
 #include "hardware.h"
 #include "lib.h"
@@ -26,6 +28,7 @@ static const unsigned ahead[] =
           0,1,1,1,0,
           0,1,1,1,0);
 
+/* sender_task -- monitor button presses and transmit radio commands */
 void sender_task(int dummy)
 {
     gpio_connect(BUTTON_A);
