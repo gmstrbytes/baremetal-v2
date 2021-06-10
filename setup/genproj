@@ -16,8 +16,8 @@ project() {
 
 project x01-echo part2 echo.c echo
 project x02-instrs part1 func.s func
-project x03-branches part1 max.s max
-project x04-loops part1 mult.s mult
+project x03-loops part1 mult.s mult
+project x04-numbers part1 max.s max
 project x05-subrs part1 fact.s fact
 project x06-arrays part1 bank.s bank
 project x07-hack hack total.c total

@@ -119,11 +119,11 @@ static void ir_task(int arg)
     message m;
 
     gpio_connect(IR_PIN);
-    GPIOTE_CONFIG[CHAN] =
+    GPIOTE.CONFIG[CHAN] =
         FIELD(GPIOTE_CONFIG_MODE, GPIOTE_MODE_Event)
         | FIELD(GPIOTE_CONFIG_PSEL, IR_PIN)
         | FIELD(GPIOTE_CONFIG_POLARITY, GPIOTE_POLARITY_Toggle);
-    GPIOTE_INTENSET = BIT(CHAN);
+    GPIOTE.INTENSET = BIT(CHAN);
     connect(GPIOTE_IRQ);
     enable_irq(GPIOTE_IRQ);
 
@@ -133,9 +133,9 @@ static void ir_task(int arg)
         receive(ANY, &m);
         switch (m.m_type) {
         case INTERRUPT:
-            if (GPIOTE_IN[CHAN]) {
+            if (GPIOTE.IN[CHAN]) {
                 ir_edge(intrtime);
-                GPIOTE_IN[CHAN] = 0;
+                GPIOTE.IN[CHAN] = 0;
                 clear_pending(GPIOTE_IRQ);
                 enable_irq(GPIOTE_IRQ);
             }
@@ -155,12 +155,6 @@ void main_task(int arg)
 {
     unsigned cmd;
     message m;
-
-    TIMER0_MODE = TIMER_MODE_Timer;
-    TIMER0_BITMODE = TIMER_BITMODE_32Bit;
-    TIMER0_PRESCALER = 4;
-    TIMER0_CLEAR = 1;
-    TIMER0_START = 1;
 
     while (1) {
         sendrec(IR_TASK, READ, &m);

@@ -107,19 +107,19 @@ reschedule */
 
 
 /* Device register arrays */
-_DEVSTRUCT _gpio * const GPIO[2] = {
+volatile _DEVICE _gpio * const GPIO[2] = {
     &GPIO0, &GPIO1
 };
 
-_DEVSTRUCT _i2c * const I2C[2] = {
+volatile _DEVICE _i2c * const I2C[2] = {
     &I2C0, &I2C1
 };
 
-_DEVSTRUCT _timer * const TIMER[5] = {
+volatile _DEVICE _timer * const TIMER[5] = {
     &TIMER0, &TIMER1, &TIMER2, &TIMER3, &TIMER4
 };
 
-_DEVSTRUCT _pwm * const PWM[4] = {
+volatile _DEVICE _pwm * const PWM[4] = {
     &PWM0, &PWM1, &PWM2, &PWM3
 };
 

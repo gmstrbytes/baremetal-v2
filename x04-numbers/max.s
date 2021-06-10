@@ -1,4 +1,4 @@
-@ x1140/max.s
+@ x1240/max.s
 @ Copyright (c) 2018-20 J. M. Spivey
 
         .syntax unified

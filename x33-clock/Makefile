@@ -44,4 +44,6 @@ clean:
 
 ###
 
-clock.o: microbian.h hardware.h lib.h
+clock.elf: neopixel.o
+
+clock.o: microbian.h hardware.h lib.h 

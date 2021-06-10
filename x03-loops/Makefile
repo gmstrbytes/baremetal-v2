@@ -1,7 +1,7 @@
 # x03/Makefile
 # Copyright (c) 2020-21 J. M. Spivey
 
-all: max.hex
+all: mult.hex
 
 CC = arm-none-eabi-gcc
 CPU = -mcpu=cortex-m4 -mthumb
