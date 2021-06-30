@@ -129,7 +129,7 @@ static void reply(void)
     
     /* Can we satisfy a reader? */
     if (reader >= 0 && n_avail > 0) {
-        m.m_i1 = rxbuf[rx_outp];
+        m.int1 = rxbuf[rx_outp];
         send(reader, REPLY, &m);
         rx_outp = wrap(rx_outp+1);
         n_avail--;
@@ -187,9 +187,9 @@ static void serial_task(int arg)
 
     while (1) {
         receive(ANY, &m);
-        client = m.m_sender;
+        client = m.sender;
 
-        switch (m.m_type) {
+        switch (m.type) {
         case INTERRUPT:
             serial_interrupt();
             break;
@@ -201,14 +201,14 @@ static void serial_task(int arg)
             break;
             
         case PUTC:
-            ch = m.m_i1;
+            ch = m.int1;
             if (ch == '\n') queue_char('\r');
             queue_char(ch);
             break;
 
         case PUTBUF:
-            buf = m.m_p1;
-            n = m.m_i2;
+            buf = m.ptr1;
+            n = m.int2;
             for (int i = 0; i < n; i++) {
                 char ch = buf[i];
                 if (ch == '\n') queue_char('\r');
@@ -218,7 +218,7 @@ static void serial_task(int arg)
             break;
 
         default:
-            badmesg(m.m_type);
+            badmesg(m.type);
         }
           
         reply();
@@ -235,7 +235,7 @@ void serial_init(void)
 void serial_putc(char ch)
 {
     message m;
-    m.m_i1 = ch;
+    m.int1 = ch;
     send(SERIAL_TASK, PUTC, &m);
 }
 
@@ -245,7 +245,7 @@ char serial_getc(void)
     message m;
     send(SERIAL_TASK, GETC, NULL);
     receive(REPLY, &m);
-    return m.m_i1;
+    return m.int1;
 }
 
 /* print_buf -- output routine for use by printf */
@@ -256,7 +256,7 @@ void print_buf(char *buf, int n)
        client process can block a reply from the device driver. */
 
     message m;
-    m.m_p1 = buf;
-    m.m_i2 = n;
+    m.ptr1 = buf;
+    m.int2 = n;
     sendrec(SERIAL_TASK, PUTBUF, &m);
 }

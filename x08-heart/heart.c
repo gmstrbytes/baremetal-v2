@@ -33,8 +33,8 @@ const unsigned small[] = {
 
 #define JIFFY 3000              /* Delay in microsecs */
 
-/* show -- display three rows of a picture n times */
-void show(const unsigned *img, int n)
+/* show -- display five rows of a picture n times */
+void show(const unsigned img[], int n)
 {
     while (n-- > 0) {
         /* Takes 15msec per iteration */

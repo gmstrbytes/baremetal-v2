@@ -20,7 +20,7 @@ static void reply(void)
     message m;
 
     if (client < 0) return;
-    m.m_i1 = command;
+    m.int1 = command;
     send(client, REPLY, &m);
     client = -1;
 }
@@ -131,7 +131,7 @@ static void ir_task(int arg)
 
     while (1) {
         receive(ANY, &m);
-        switch (m.m_type) {
+        switch (m.type) {
         case INTERRUPT:
             if (GPIOTE.IN[CHAN]) {
                 ir_edge(intrtime);
@@ -142,11 +142,11 @@ static void ir_task(int arg)
             break;
 
         case READ:
-            client = m.m_sender;
+            client = m.sender;
             break;
 
         default:
-            badmesg(m.m_type);
+            badmesg(m.type);
         }
     }
 }
@@ -158,7 +158,7 @@ void main_task(int arg)
 
     while (1) {
         sendrec(IR_TASK, READ, &m);
-        cmd = m.m_i1;
+        cmd = m.int1;
         if (GET_BYTE(cmd, 2) != (GET_BYTE(cmd, 3) ^ 0xff))
             printf("wrong address!\n");
         else if (GET_BYTE(cmd, 0) != (GET_BYTE(cmd, 1) ^ 0xff))

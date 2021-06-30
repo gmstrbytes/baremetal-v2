@@ -41,7 +41,7 @@ static void check_timers(void)
 
     for (i = 0; i < MAX_TIMERS; i++) {
         if (timer[i].client >= 0 && millis >= timer[i].next) {
-            m.m_i1 = timer[i].next;
+            m.int1 = timer[i].next;
             send(timer[i].client, PING, &m);
 
             if (timer[i].period > 0)
@@ -108,17 +108,17 @@ static void timer_task(int n)
     while (1) {
         receive(ANY, &m);
 
-        switch (m.m_type) {
+        switch (m.type) {
         case INTERRUPT:
             check_timers();
             break;
 
         case REGISTER:
-            create(m.m_sender, m.m_i1, m.m_i2);
+            create(m.sender, m.int1, m.int2);
             break;
 
         default:
-            badmesg(m.m_type);
+            badmesg(m.type);
         }
     }
 }
@@ -183,8 +183,8 @@ unsigned timer_micros(void)
 void timer_delay(int msec)
 {
     message m;
-    m.m_i1 = msec;
-    m.m_i2 = 0;                 /* Don't repeat */
+    m.int1 = msec;
+    m.int2 = 0;                 /* Don't repeat */
     send(TIMER_TASK, REGISTER, &m);
     receive(PING, NULL);
 }
@@ -193,8 +193,8 @@ void timer_delay(int msec)
 void timer_pulse(int msec)
 {
     message m;
-    m.m_i1 = msec;
-    m.m_i2 = msec;              /* Repetitive */
+    m.int1 = msec;
+    m.int2 = msec;              /* Repetitive */
     send(TIMER_TASK, REGISTER, &m);
 }
 

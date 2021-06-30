@@ -53,8 +53,8 @@ static void adc_task(int dummy)
     while (1) {
         /* Wait for a request */
         receive(REQUEST, &m);
-        client = m.m_sender;
-        chan = m.m_i1;
+        client = m.sender;
+        chan = m.int1;
 
 #ifdef UBIT_V1
         /* Carry out an ADC acquisition */
@@ -90,7 +90,7 @@ static void adc_task(int dummy)
         enable_irq(ADC_IRQ);
 
         /* Reply to the client */
-        m.m_i1 = result;
+        m.int1 = result;
         send(client, REPLY, &m);
     }
 }
@@ -122,9 +122,9 @@ int adc_reading(int pin)
     if (chan < 0)
         panic("Can't use pin %d for ADC", pin);
 
-    m.m_i1 = chan;
+    m.int1 = chan;
     sendrec(ADC_TASK, REQUEST, &m);
-    return m.m_i1;
+    return m.int1;
 }
 
 /* adc_init -- start ADC driver */

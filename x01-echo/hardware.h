@@ -80,7 +80,7 @@ argument to be a macro that expands the a 'position, width' pair. */
 
 #define I2C_INTERNAL 0
 #define I2C_EXTERNAL 1
-#define N_I2CS 2
+#define N_I2C 2
 
 /* TODO: Logo touch, mic power, mic input, speaker */
 

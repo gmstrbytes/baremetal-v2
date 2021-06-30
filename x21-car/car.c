@@ -22,7 +22,7 @@ void adapter_task(int dummy)
     while (1) {
         n = radio_receive(buf);
         if (n >= 2 && buf[0] == '@') {
-            m.m_i1 = buf[1];
+            m.int1 = buf[1];
             send(CONTROL, CMD, &m);
         }
     }
@@ -75,7 +75,7 @@ void control_task(int dummy)
 
     while (1) {
         receive(ANY, &m);
-        switch (m.m_type) {
+        switch (m.type) {
         case PING:
             /* Note passage of time */
             if (quantum > 0) {
@@ -86,7 +86,7 @@ void control_task(int dummy)
 
         case CMD:
             /* Respond to radio command */
-            cmd = m.m_i1;
+            cmd = m.int1;
             if (cmd == 'B')
                 drive(SPEED, SPEED, 25);
             else if (cmd == 'L')

@@ -8,7 +8,6 @@ typedef unsigned char byte;
 /* Standard pids */
 #define HARDWARE -1
 #define IDLE 0
-#define ANY -1
 
 /* Common message types */
 #define INTERRUPT 1
@@ -23,6 +22,7 @@ typedef unsigned char byte;
 #define ERR 10
 #define SEND 11
 #define RECEIVE 12
+#define ANY -1
 
 /* Possible priorities */
 #define P_HANDLER 0             /* Interrupt handler */
@@ -32,14 +32,14 @@ typedef unsigned char byte;
 #define NPRIO 3                 /* Number of non-idle priorities */
 
 typedef struct {                /* 16 bytes */
-    unsigned short m_type;      /* Type of message */
-    unsigned short m_sender;    /* PID of sender */
+    unsigned short type;        /* Type of message */
+    short sender;               /* PID of sender */
     union {                     /* An integer, a pointer, or four bytes */
-        int m_i1; void *m_p1;
-        struct { byte m_b1, m_b2, m_b3, m_b4; };
+        int int1; void *ptr1;
+        struct { byte byte1, byte2, byte3, byte4; };
     };
-    union { int m_i2; void *m_p2; }; /* Another integer or pointer */
-    union { int m_i3; void *m_p3; }; /* A third integer or pointer */
+    union { int int2; void *ptr2; }; /* Another integer or pointer */
+    union { int int3; void *ptr3; }; /* A third integer or pointer */
 } message;
 
 

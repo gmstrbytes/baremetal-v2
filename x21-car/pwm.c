@@ -113,11 +113,11 @@ static void pwm_task(int arg)
 
     while (1) {
         receive(ANY, &m);
-        switch (m.m_type) {
+        switch (m.type) {
         case WIDTH:
-            client = m.m_sender;
-            set_width(0, m.m_i1);
-            set_width(1, m.m_i2);
+            client = m.sender;
+            set_width(0, m.int1);
+            set_width(1, m.int2);
 
             /* Enable an interrupt to update the timer */
             TIMER2.COMPARE[2] = 0;
@@ -129,16 +129,16 @@ static void pwm_task(int arg)
             break;
 
         default:
-            badmesg(m.m_type);
+            badmesg(m.type);
         }
     }
 }
 
-void pwm_change(int width0, int width1)
+void pwm_change(int width1, int width2)
 {
     message m;
-    m.m_i1 = width0;
-    m.m_i2 = width1;
+    m.int1 = width1;
+    m.int2 = width2;
     sendrec(PWM_TASK, WIDTH, &m);
 }
 

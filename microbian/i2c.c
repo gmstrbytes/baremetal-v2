@@ -12,14 +12,14 @@ once for each) according to its needs.  On the V1 board, these two
 constants are equal, and we'll make sure that only one driver process
 is started. */
 
-static int I2C_TASK[N_I2CS];
+static int I2C_TASK[N_I2C];
 
 /* i2c_pins -- pin assignments for I2C interfaces */
 static struct {
     unsigned scl;               /* I2C clock pin */
     unsigned sda;               /* I2C data pin */
     int irq;                    /* Interrupt number */
-} i2c_pins[N_I2CS] = {
+} i2c_pins[N_I2C] = {
 #ifdef UBIT_V1
     { I2C_SCL, I2C_SDA, I2C_IRQ },
 #endif
@@ -95,14 +95,14 @@ static void i2c_task(int chan)
 
     while (1) {
         receive(ANY, &m);
-        client = m.m_sender;
-        addr = m.m_b1;        /* Address [0..127] without R/W flag */
-        n1 = m.m_b2;          /* Number of bytes in command */
-        n2 = m.m_b3;          /* Number of bytes to transfer (R/W) */
-        buf1 = m.m_p2;        /* Buffer for command */
-        buf2 = m.m_p3;        /* Buffer for transfer */
+        client = m.sender;
+        addr = m.byte1;        /* Address [0..127] without R/W flag */
+        n1 = m.byte2;          /* Number of bytes in command */
+        n2 = m.byte3;          /* Number of bytes to transfer (R/W) */
+        buf1 = m.ptr2;        /* Buffer for command */
+        buf2 = m.ptr3;        /* Buffer for transfer */
 
-        switch (m.m_type) {
+        switch (m.type) {
         case READ:
             I2C[chan]->ADDRESS = addr;
             status = OK;
@@ -150,8 +150,8 @@ static void i2c_task(int chan)
             }
 
             I2C[chan]->SHORTS = 0;
-            m.m_i1 = status;
-            m.m_i2 = error;
+            m.int1 = status;
+            m.int2 = error;
             send(client, REPLY, &m);
             break;
 
@@ -172,13 +172,13 @@ static void i2c_task(int chan)
                 I2C[chan]->ERRORSRC = I2C_ERRORSRC_All;
             }
                
-            m.m_i1 = status;
-            m.m_i2 = error;
+            m.int1 = status;
+            m.int2 = error;
             send(client, REPLY, &m);
             break;
 
         default:
-            badmesg(m.m_type);
+            badmesg(m.type);
         }
     }
 }
@@ -194,14 +194,14 @@ void i2c_init(int chan)
 int i2c_xfer(int chan, int kind, int addr,
              byte *buf1, int n1, byte *buf2, int n2) {
     message m;
-    m.m_b1 = addr;
-    m.m_b2 = n1;
-    m.m_b3 = n2;
-    m.m_p2 = buf1;
-    m.m_p3 = buf2;
+    m.byte1 = addr;
+    m.byte2 = n1;
+    m.byte3 = n2;
+    m.ptr2 = buf1;
+    m.ptr3 = buf2;
     send(I2C_TASK[chan], kind, &m);
     receive(REPLY, &m);
-    return m.m_i1;
+    return m.int1;
 }
 
 /* i2c_probe -- try to access an I2C device */

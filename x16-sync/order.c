@@ -22,8 +22,8 @@ void host(int n)
 
     while (1) {
         receive(SPEAK, &m);
-        speaker = m.m_sender;
-        line = m.m_p1;
+        speaker = m.sender;
+        line = m.ptr1;
         printf("%s\n", line);
         send(speaker, REPLY, NULL);
     }
@@ -34,7 +34,7 @@ void guest(int n)
     message m;
 
     while (1) {
-        m.m_p1 = slogan[n];
+        m.ptr1 = slogan[n];
         sendrec(HUMPHRYS, SPEAK, &m);
     }
 }

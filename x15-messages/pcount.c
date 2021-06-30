@@ -28,7 +28,7 @@ void producer(int arg)
 
     while (1) {
         if (prime(n)) {
-            m1.m_i1 = n;
+            m1.int1 = n;
             send(CONSUMER, PRIME, &m1);
         }
         n++;
@@ -43,7 +43,7 @@ void consumer(int arg)
 
     while (1) {
         receive(PRIME, &m2);
-        while (m2.m_i1 >= limit) {
+        while (m2.int1 >= limit) {
             printf("There are %d primes less than %d\n", count, limit);
             limit += 1000;
         }

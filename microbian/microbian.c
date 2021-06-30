@@ -10,28 +10,30 @@
 /* PROCESS DESCRIPTORS */
 
 /* Each process has a descriptor, allocated when the process is
-created.  The p_next field in the descriptor allows each process to be
+created.  The next field in the descriptor allows each process to be
 linked into at most one queue -- either the queue of ready processes
 at some priority level, or the queue of senders waiting to deliver a
 message to a particular receiver process. */
 
-struct proc {
-    int p_pid;                  /* Process ID (equal to index) */
-    char p_name[16];            /* Name for debugging */
-    unsigned p_state;           /* SENDING, RECEIVING, etc. */
-    unsigned *p_sp;             /* Saved stack pointer */
-    void *p_stack;              /* Stack area */
-    unsigned p_stksize;         /* Stack size (bytes) */
-    int p_priority;             /* Priority: 0 is highest */
+typedef struct _proc *proc;
+
+struct _proc {
+    int pid;                  /* Process ID (equal to index) */
+    char name[16];            /* Name for debugging */
+    unsigned state;           /* SENDING, RECEIVING, etc. */
+    unsigned *sp;             /* Saved stack pointer */
+    void *stack;              /* Stack area */
+    unsigned stksize;         /* Stack size (bytes) */
+    int priority;             /* Priority: 0 is highest */
     
-    struct proc *p_waiting;     /* Processes waiting to send */
-    int p_pending;              /* Whether HARDWARE message pending */
-    int p_msgtype;              /* Message type to send or recieve */
-    message *p_message;         /* Pointer to message buffer */
-    struct proc *p_next;        /* Next process in ready or send queue */
+    proc waiting;             /* Processes waiting to send */
+    int pending;              /* Whether HARDWARE message pending */
+    int msgtype;              /* Message type to send or recieve */
+    message *message;         /* Pointer to message buffer */
+    proc next;                /* Next process in ready or send queue */
 };
 
-/* Possible p_state values */
+/* Possible state values */
 #define DEAD 0
 #define ACTIVE 1
 #define SENDING 2
@@ -70,12 +72,12 @@ static void *sbrk(int inc)
 }
 
 /* new_proc -- allocate a process descriptor from the top of the heap */
-static struct proc *new_proc(void)
+static proc new_proc(void)
 {
-    if (htop - hbot < sizeof(struct proc))
+    if (htop - hbot < sizeof(struct _proc))
         panic("No space for process");
-    htop -= sizeof(struct proc);
-    return (struct proc *) htop;
+    htop -= sizeof(struct _proc);
+    return (proc) htop;
 }
 
 
@@ -83,11 +85,11 @@ static struct proc *new_proc(void)
 
 #define NPROCS 32
 
-static struct proc *os_ptable[NPROCS];
+static proc os_ptable[NPROCS];
 static unsigned os_nprocs = 0;
 
-static struct proc *os_current;
-static struct proc *idle_proc;
+static proc os_current;
+static proc idle_proc;
 
 #define BLANK 0xdeadbeef        /* Filler for initial stack */
 
@@ -126,19 +128,19 @@ static void microbian_dump(void)
        more painful than it should be. */
 
     for (int pid = 0; pid < os_nprocs; pid++) {
-        struct proc *p = os_ptable[pid];
+        proc p = os_ptable[pid];
 
         /* Find free space on process stack */
-        unsigned *z = (unsigned *) p->p_stack;
+        unsigned *z = (unsigned *) p->stack;
         while (*z == BLANK) z++;
-        unsigned free = (char *) z - (char *) p->p_stack;
+        unsigned free = (char *) z - (char *) p->stack;
 
-        sprintf(buf, "%u/%u", p->p_stksize-free, p->p_stksize);
+        sprintf(buf, "%u/%u", p->stksize-free, p->stksize);
         pad(buf, 9);
         kprintf_internal("%s%d: %s %x stk=%s %s\r\n",
                          (pid < 10 ? " " : ""), pid,
-                         state_name[p->p_state], (unsigned) p->p_stack,
-                         buf, p->p_name);
+                         state_name[p->state], (unsigned) p->stack,
+                         buf, p->name);
     }
 }
 
@@ -146,35 +148,37 @@ static void microbian_dump(void)
 /* PROCESS QUEUES */
 
 /* os_readyq -- one queue for each priority */
-static struct queue {
-    struct proc *q_head, *q_tail;
+typedef struct _queue *queue;
+
+static struct _queue {
+    proc head, tail;
 } os_readyq[NPRIO];
 
 /* make_ready -- add process to end of the ready queue for its priority */
-static inline void make_ready(struct proc *p)
+static inline void make_ready(proc p)
 {
-    int prio = p->p_priority;
+    int prio = p->priority;
     if (prio == P_IDLE) return;
 
-    p->p_state = ACTIVE;
-    p->p_next = NULL;
+    p->state = ACTIVE;
+    p->next = NULL;
 
-    struct queue *q = &os_readyq[prio];
-    if (q->q_head == NULL)
-        q->q_head = p;
+    queue q = &os_readyq[prio];
+    if (q->head == NULL)
+        q->head = p;
     else
-        q->q_tail->p_next = p;
-    q->q_tail = p;
+        q->tail->next = p;
+    q->tail = p;
 }
 
 /* choose_proc -- the current process is blocked: pick a new one */
 static inline void choose_proc(void)
 {
     for (int p = 0; p < NPRIO; p++) {
-        struct queue *q = &os_readyq[p];
-        if (q->q_head != NULL) {
-            os_current = q->q_head;
-            q->q_head = os_current->p_next;
+        queue q = &os_readyq[p];
+        if (q->head != NULL) {
+            os_current = q->head;
+            q->head = os_current->next;
             return;
         }
     }
@@ -188,19 +192,18 @@ static inline void choose_proc(void)
 processes via the system calls send() and receive(). */
 
 /* accept -- test if a process is waiting for a message of given type */
-static inline int accept(struct proc *pdest, int type)
+static inline int accept(proc pdest, int type)
 {
-    return (pdest->p_state == RECEIVING
-            && (pdest->p_msgtype == ANY || pdest->p_msgtype == type));
+    return (pdest->state == RECEIVING
+            && (pdest->msgtype == ANY || pdest->msgtype == type));
 }
 
 /* set_state -- set process state for send or receive */
-static inline void set_state(struct proc *p, int state,
-                             int type, message *msg)
+static inline void set_state(proc p, int state, int type, message *msg)
 {
-    p->p_state = state;
-    p->p_msgtype = type;
-    p->p_message = msg;
+    p->state = state;
+    p->msgtype = type;
+    p->message = msg;
 }
 
 /* deliver -- copy a message and fill in standard fields */
@@ -208,36 +211,36 @@ static inline void deliver(message *buf, int src, int type, message *msg)
 {
     if (buf) {
         if (msg) *buf = *msg;
-        buf->m_sender = src;
-        buf->m_type = type;
+        buf->sender = src;
+        buf->type = type;
     }
 }
 
 /* enqueue -- add current process to a receiver's queue */
-static inline void enqueue(struct proc *pdest)
+static inline void enqueue(proc pdest)
 {
-    os_current->p_next = NULL;
-    if (pdest->p_waiting == NULL)
-        pdest->p_waiting = os_current;
+    os_current->next = NULL;
+    if (pdest->waiting == NULL)
+        pdest->waiting = os_current;
     else {
-        struct proc *r = pdest->p_waiting;
-        while (r->p_next != NULL)
-            r = r->p_next;
-        r->p_next = os_current;
+        proc r = pdest->waiting;
+        while (r->next != NULL)
+            r = r->next;
+        r->next = os_current;
     }
 }
 
 /* find_sender -- search process queue for acceptable sender */
-static struct proc *find_sender(struct proc *pdst, int type)
+static proc find_sender(proc pdst, int type)
 {
-    struct proc *psrc, *prev = NULL;
+    proc psrc, prev = NULL;
         
-    for (psrc = pdst->p_waiting; psrc != NULL; psrc = psrc->p_next) {
-        if (type == ANY || psrc->p_msgtype == type) {
+    for (psrc = pdst->waiting; psrc != NULL; psrc = psrc->next) {
+        if (type == ANY || psrc->msgtype == type) {
             if (prev == NULL)
-                pdst->p_waiting = psrc->p_next;
+                pdst->waiting = psrc->next;
             else
-                prev->p_next = psrc->p_next;
+                prev->next = psrc->next;
 
             return psrc;
         }
@@ -249,13 +252,13 @@ static struct proc *find_sender(struct proc *pdst, int type)
 }
 
 /* await_reply -- wait for reply after sendrec */
-static void await_reply(struct proc *pdst, message *msg)
+static void await_reply(proc pdst, message *msg)
 {
-    struct proc *psrc = find_sender(pdst, REPLY);
+    proc psrc = find_sender(pdst, REPLY);
     if (psrc != NULL) {
         /* Unlikely but not impossible: a REPLY message is already waiting.
            It can't come from the process pdst. */
-        deliver(pdst->p_message, psrc->p_pid, REPLY, msg);
+        deliver(pdst->message, psrc->pid, REPLY, msg);
         make_ready(pdst);
         make_ready(psrc);
     } else {
@@ -266,15 +269,15 @@ static void await_reply(struct proc *pdst, message *msg)
 /* mini_send -- send a message */
 static void mini_send(int dest, int type, message *msg)
 {
-    int src = os_current->p_pid;
-    struct proc *pdest = os_ptable[dest];
+    int src = os_current->pid;
+    proc pdest = os_ptable[dest];
 
-    if (dest < 0 || dest >= os_nprocs || pdest->p_state == DEAD)
+    if (dest < 0 || dest >= os_nprocs || pdest->state == DEAD)
         panic("Sending to a non-existent process %d", dest);
 
     if (accept(pdest, type)) {
         /* Receiver is waiting: deliver the message and run receiver */
-        deliver(pdest->p_message, src, type, msg);
+        deliver(pdest->message, src, type, msg);
         make_ready(pdest);
         make_ready(os_current);
     } else {
@@ -290,27 +293,27 @@ static void mini_send(int dest, int type, message *msg)
 static void mini_receive(int type, message *msg)
 {
     /* First see if an interrupt is pending */
-    if (os_current->p_pending && (type == ANY || type == INTERRUPT)) {
-        os_current->p_pending = 0;
+    if (os_current->pending && (type == ANY || type == INTERRUPT)) {
+        os_current->pending = 0;
         deliver(msg, HARDWARE, INTERRUPT, NULL);
         return;
     }
 
     /* Now see if a sender is waiting */
     if (type != INTERRUPT) {
-        struct proc *psrc = find_sender(os_current, type);
+        proc psrc = find_sender(os_current, type);
 
         if (psrc != NULL) {
-            deliver(msg, psrc->p_pid, psrc->p_msgtype, psrc->p_message);
+            deliver(msg, psrc->pid, psrc->msgtype, psrc->message);
             make_ready(os_current);
 
-            switch (psrc->p_state) {
+            switch (psrc->state) {
             case SENDING:
                 make_ready(psrc);
                 break;
 
             case SENDREC:
-                await_reply(psrc, psrc->p_message);
+                await_reply(psrc, psrc->message);
                 break;
 
             default:
@@ -330,18 +333,18 @@ static void mini_receive(int type, message *msg)
 /* mini_sendrec -- send a message and wait for reply */
 static void mini_sendrec(int dest, int type, message *msg)
 {
-    int src = os_current->p_pid;
-    struct proc *pdest = os_ptable[dest];
+    int src = os_current->pid;
+    proc pdest = os_ptable[dest];
 
     if (type == REPLY)
         panic("sendrec may not be used to send REPLY message");
 
-    if (dest < 0 || dest >= os_nprocs || pdest->p_state == DEAD)
+    if (dest < 0 || dest >= os_nprocs || pdest->state == DEAD)
         panic("Sending to a non-existent process %d", dest);
 
     if (accept(pdest, type)) {
         /* Send the message and wait for a reply */
-        deliver(pdest->p_message, src, type, msg);
+        deliver(pdest->message, src, type, msg);
         make_ready(pdest);
         await_reply(os_current, msg);
     } else {
@@ -368,34 +371,34 @@ static int os_handler[N_INTERRUPTS];
 void connect(int irq)
 {
     if (irq < 0) panic("Can't connect to CPU exceptions");
-    os_current->p_priority = P_HANDLER;
-    os_handler[irq] = os_current->p_pid;
+    os_current->priority = P_HANDLER;
+    os_handler[irq] = os_current->pid;
 }
 
 /* priority -- set process priority */
 void priority(int p)
 {
     if (p < 0 || p > P_LOW) panic("Bad priority %d\n", p);
-    os_current->p_priority = p;
+    os_current->priority = p;
 }
 
 /* interrupt -- send interrupt message */
 void interrupt(int dest)
 {
-    struct proc *pdest = os_ptable[dest];
+    proc pdest = os_ptable[dest];
 
     if (accept(pdest, INTERRUPT)) {
         /* Receiver is waiting for an interrupt */
-        deliver(pdest->p_message, HARDWARE, INTERRUPT, NULL);
+        deliver(pdest->message, HARDWARE, INTERRUPT, NULL);
 
         make_ready(pdest);
-        if (os_current->p_priority > P_HANDLER) {
+        if (os_current->priority > P_HANDLER) {
             /* Preempt lower-priority process */
             reschedule();
         }
     } else {
         /* Let's hope it's not urgent! */
-        pdest->p_pending = 1;
+        pdest->pending = 1;
     }
 }
 
@@ -431,10 +434,10 @@ void hardfault_handler(void)
 /* INITIALISATION */
 
 /* create_proc -- allocate and initialise process descriptor */
-static struct proc *create_proc(char *name, unsigned stksize)
+static proc create_proc(char *name, unsigned stksize)
 {
     int pid;
-    struct proc *p;
+    proc p;
     unsigned char *stack;
     unsigned *sp;
 
@@ -451,19 +454,19 @@ static struct proc *create_proc(char *name, unsigned stksize)
     for (unsigned *p = (unsigned *) stack; p < sp; p++) *p = BLANK;
 
     /* Fill in fields of the descriptor */
-    p->p_pid = pid;
-    strncpy(p->p_name, name, 15);
-    p->p_name[15] = '\0';
-    p->p_sp = sp;
-    p->p_stack = stack;
-    p->p_stksize = stksize;
-    p->p_state = ACTIVE;
-    p->p_priority = P_LOW;
-    p->p_waiting = 0;
-    p->p_pending = 0;
-    p->p_msgtype = ANY;
-    p->p_message = NULL;
-    p->p_next = NULL;
+    p->pid = pid;
+    strncpy(p->name, name, 15);
+    p->name[15] = '\0';
+    p->sp = sp;
+    p->stack = stack;
+    p->stksize = stksize;
+    p->state = ACTIVE;
+    p->priority = P_LOW;
+    p->waiting = 0;
+    p->pending = 0;
+    p->msgtype = ANY;
+    p->message = NULL;
+    p->next = NULL;
 
     return p;
 }
@@ -486,23 +489,23 @@ static struct proc *create_proc(char *name, unsigned stksize)
 /* start -- initialise process to run later */
 int start(char *name, void (*body)(int), int arg, int stksize)
 {
-    struct proc *p = create_proc(name, roundup(stksize, 8));
+    proc p = create_proc(name, roundup(stksize, 8));
 
     if (os_current != NULL)
         panic("start() called after scheduler startup");
 
     /* Fake an exception frame */
-    unsigned *sp = p->p_sp - FRAME_WORDS;
+    unsigned *sp = p->sp - FRAME_WORDS;
     memset(sp, 0, 4*FRAME_WORDS);
     sp[PSR_SAVE] = INIT_PSR;
     sp[PC_SAVE] = (unsigned) body & ~0x1; /* Activate the process body */
     sp[LR_SAVE] = (unsigned) exit; /* Make it return to exit() */
     sp[R0_SAVE] = (unsigned) arg;  /* Pass the supplied argument in R0 */
     sp[ERV_SAVE] = MAGIC;
-    p->p_sp = sp;
+    p->sp = sp;
 
     make_ready(p);
-    return p->p_pid;
+    return p->pid;
 }
 
 /* set_stack -- enter thread mode with specified stack (see mpx.s) */
@@ -518,15 +521,15 @@ void __start(void)
 {
     /* Create idle task as process 0 */
     idle_proc = create_proc("IDLE", IDLE_STACK);
-    idle_proc->p_state = IDLING;
-    idle_proc->p_priority = P_IDLE;
+    idle_proc->state = IDLING;
+    idle_proc->priority = P_IDLE;
 
     /* Call the application's setup function */
     init();
 
     /* The main program morphs into the idle process. */
     os_current = idle_proc;
-    set_stack(os_current->p_sp);
+    set_stack(os_current->sp);
     yield();                    /* Pick a genuine process to run */
 
     /* Idle only runs again when there's nothing to do. */
@@ -558,10 +561,10 @@ unsigned *system_call(unsigned *psp)
     int op = pc[-1] & 0xff;      /* Syscall number from SVC instruction */
 
     /* Save sp of the current process */
-    os_current->p_sp = psp;
+    os_current->sp = psp;
 
     /* Check for stack overflow */
-    if (* (unsigned *) os_current->p_stack != BLANK)
+    if (* (unsigned *) os_current->stack != BLANK)
         panic("Stack overflow");
 
     switch (op) {
@@ -583,7 +586,7 @@ unsigned *system_call(unsigned *psp)
         break;
 
     case SYS_EXIT:
-        os_current->p_state = DEAD;
+        os_current->state = DEAD;
         choose_proc();
         break;
 
@@ -599,16 +602,16 @@ unsigned *system_call(unsigned *psp)
     }
 
     /* Return sp for next process to run */
-    return os_current->p_sp;
+    return os_current->sp;
 }
 
 /* cxt_switch -- context switch following interrupt */
 unsigned *cxt_switch(unsigned *psp)
 {
-    os_current->p_sp = psp;
+    os_current->sp = psp;
     make_ready(os_current);
     choose_proc();
-    return os_current->p_sp;
+    return os_current->sp;
 }
 
 
@@ -737,7 +740,7 @@ void panic(char *fmt, ...)
     do_print(kputc, fmt, va);
     va_end(va);
     if (os_current != NULL)
-         kprintf_internal(" in process %s", os_current->p_name);
+         kprintf_internal(" in process %s", os_current->name);
     kprintf_internal("\r\n");
 
     spin();

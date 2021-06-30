@@ -91,18 +91,18 @@ static void serial_task(int arg)
     while (1) {
         receive(ANY, &m);
 
-        switch (m.m_type) {
+        switch (m.type) {
         case INTERRUPT:
             serial_interrupt();
             break;
 
         case PUTC:
-            ch = m.m_i1;
+            ch = m.int1;
             serial_enqueue(ch);
             break;
 
         default:
-            badmesg(m.m_type);
+            badmesg(m.type);
         }
           
         serial_starttx();
@@ -119,7 +119,7 @@ void myserial_init(void)
 void myserial_putc(char ch)
 {
     message m;
-    m.m_i1 = ch;
+    m.int1 = ch;
     send(SERIAL_TASK, PUTC, &m);
 }
 

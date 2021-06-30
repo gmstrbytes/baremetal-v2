@@ -1,16 +1,15 @@
 @@@ x2040/blinky.s
 @@@ Copyright (c) 2019 J. M. Spivey
 
-    .thumb                      @ Blinky for Micro:bit
+    .thumb                      @ Blinky for Micro:bit V2
     .syntax unified
-    .global __reset
-    .equ stack, 0x2001f000      @ Stack at top of RAM
+        .global __reset
 
     .section .vectors
     @@ Vector table at address 0
-    .word stack                 @ Initial stack pointer
+    .word __stack               @ Initial stack pointer
     .word __reset               @ Reset vector
-                                @ Rest of the vectors are unused
+    @@ Rest of the vectors are unused
 
     .text
     .thumb_func
